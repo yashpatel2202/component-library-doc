@@ -1,20 +1,19 @@
-@import "tailwindcss";
+/* @import "tailwindcss"; */
 
 /* Rehype Pretty Code Styling */
 @layer utilities {
-  
   /* 
     Fix for Rehype Pretty Code Dual Themes:
     Map the generated CSS variables to actual CSS properties.
   */
-  
+
   /* Light Mode (Default) */
-  pre[data-theme*=" "], 
+  pre[data-theme*=" "],
   code[data-theme*=" "] {
     background-color: var(--shiki-light-bg) !important;
     color: var(--shiki-light) !important;
   }
-  
+
   pre[data-theme*=" "] span,
   code[data-theme*=" "] span {
     color: var(--shiki-light);
@@ -22,17 +21,17 @@
 
   /* Dark Mode - System Preference */
   @media (prefers-color-scheme: dark) {
-    pre[data-theme*=" "], 
+    pre[data-theme*=" "],
     code[data-theme*=" "] {
       background-color: var(--shiki-dark-bg) !important;
       color: var(--shiki-dark) !important;
     }
 
-    pre[data-theme*=" "] span, 
+    pre[data-theme*=" "] span,
     code[data-theme*=" "] span {
       color: var(--shiki-dark);
     }
-    
+
     /* Dark Mode Border */
     pre {
       border-color: #27272a; /* zinc-800 */
@@ -45,12 +44,12 @@
     background-color: var(--shiki-dark-bg) !important;
     color: var(--shiki-dark) !important;
   }
-  
+
   .dark pre[data-theme*=" "] span,
   .dark code[data-theme*=" "] span {
     color: var(--shiki-dark);
   }
-  
+
   .dark pre {
     border-color: #27272a; /* zinc-800 */
   }
