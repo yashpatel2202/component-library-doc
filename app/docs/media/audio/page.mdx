@@ -1,0 +1,80 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# Audio Player
+
+## 1. Requirements Document
+
+### Overview
+
+A specialized component for playing audio files, podcasts, or background music. It focuses on background execution capabilities and lock-screen integration.
+
+### User Stories
+
+- **As a User**, I want my music to keep playing when I lock my phone.
+- **As a User**, I want to control playback from the notification center.
+
+### Functional Requirements
+
+1.  **Playback**: Streaming and Local file support.
+2.  **OS Integration**:
+    - Background Service.
+    - Lock Screen Media Controls (Play/Pause/Next).
+    - Audio Focus handling (pause when phone rings).
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [App UI]
+        direction TB
+        Mini[Mini<br/>Player]:::service
+    end
+
+    subgraph Service [Background Iso]
+        direction TB
+        Handler[Audio<br/>Handler]:::core
+    end
+
+    subgraph System [OS Integration]
+        direction TB
+        Notif[Notification<br/>Center]:::storage
+        Focus[Audio<br/>Session]:::storage
+    end
+
+    %% Connections
+    Mini -->|RPC| Handler
+    Handler -->|Update| Notif
+    Handler -->|Request| Focus
+    Notif -.->|Action| Handler`}
+
+description={
+<p>
+Audio playback often runs in a separate <strong>Background Isolate</strong> or Service
+to ensure uninterrupted playback when the app is backgrounded. The <strong>Audio Handler</strong>
+communicates with the UI via RPC or standard streams.
+</p>
+}
+/>
+
+### API Design
+
+#### Usage
+
+```dart
+AudioPlayerWidget(
+  source: "https://example.com/podcast.mp3",
+  title: "Episode 1",
+  artist: "My Podcast",
+  artUri: "https://example.com/cover.jpg",
+)
+```

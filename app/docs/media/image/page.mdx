@@ -1,0 +1,96 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# Image Component
+
+## 1. Requirements Document
+
+### Overview
+
+A robust image display component capable of handling network URLs, local assets, and files. It features built-in caching, error handling, placeholders, and interactive zooming capabilities.
+
+### User Stories
+
+- **As a User**, I want images to load instantly if I've seen them before (caching).
+- **As a User**, I want to pinch-to-zoom on detailed images (e.g., product photos).
+- **As a User**, I want to see a nice placeholder while the high-res image loads.
+
+### Functional Requirements
+
+1.  **Sources**: Network, Asset, File, Memory.
+2.  **Display**:
+    - `BoxFit` configuration (cover, contain, etc.).
+    - Circular/Rounded variants.
+3.  **Interactivity**:
+    - Tap to expand/lightbox.
+    - Pinch-to-zoom.
+4.  **Performance**:
+    - disk and memory caching (via `cached_network_image`).
+    - Resize on decode for memory optimization.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+    
+    %% Config for Basis Curves
+    %% mermaid.initialize({ flowchart: { curve: 'basis' } });
+
+    %% Nodes
+    subgraph UI [Presentation]
+        direction TB
+        View[ImageView]:::service
+        Interactive[Zoomable<br/>Wrapper]:::service
+    end
+
+    subgraph Logic [Image Provider]
+        direction TB
+        Provider[Cached<br/>Provider]:::core
+    end
+
+    subgraph Data [Storage]
+        direction TB
+        Disk[Disk<br/>Cache]:::storage
+        Mem[Memory<br/>Cache]:::storage
+        Net[Network]:::storage
+    end
+
+    %% Connections
+    View -->|Config| Provider
+    View -.->|Touch| Interactive
+    Provider -->|Check| Mem
+    Provider -->|Check| Disk
+    Provider -->|Fetch| Net
+    Net -.->|Save| Disk
+    Disk -.->|Load| Mem`}
+
+description={
+
+<p>
+The <strong>ImageView</strong> intelligently manages the image lifecycle. It checks layers of cache
+(Memory &rarr; Disk &rarr; Network) to ensure the fastest possible load time. The <strong>Zoomable Wrapper</strong>
+can be optionally engaged for detailed inspection.
+</p>
+}
+/>
+
+### API Design
+
+#### Usage
+
+```dart
+MyImage(
+  source: "https://example.com/photo.jpg",
+  fit: BoxFit.cover,
+  enableZoom: true,
+  placeholder: ShimmerLoading(),
+  errorWidget: Icon(Icons.broken_image),
+)
+```

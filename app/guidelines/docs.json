@@ -1,0 +1,64 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "BAPS Flutter Component Library",
+  "colors": {
+    "primary": "#1672a3",
+    "light": "#0785c9",
+    "dark": "#155b80"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "index/index",
+              "index/introduction",
+              "index/type",
+              "index/baseline"
+            ]
+          },
+          {
+            "group": "Component",
+            "pages": [
+              "component/decode",
+              "component/theme",
+              "component/layout",
+              "component/bl"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/scope",
+              "advanced/interdepend",
+              "advanced/multiroute"
+            ]
+          },
+          {
+            "group": "What's Next",
+            "pages": [
+              "next/start"
+            ]
+          }
+        ],
+    "global": {
+      "anchors": [
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+  },
+  "contextual": {
+    "options": [
+   ]
+  },"appearance": {
+  "default": "light",
+  "strict": false
+}
+}

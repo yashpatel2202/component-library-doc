@@ -1,0 +1,98 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# Views / Screens
+
+## 1. Requirements Document
+
+### Overview
+
+Pre-composed screen templates that implement common app patterns, such as "Master-Detail", "Settings", "Profile", or "Dashboard". These aim to reduce boilerplate for standard pages.
+
+### user Stories
+
+- **As a Developer**, I want to create a settings page with grouped options in 5 minutes.
+- **As a Developer**, I want a standard "Error/Offline" screen that I can reuse globally.
+
+### Functional Requirements
+
+1.  **Templates**:
+    - **Dashboard**: Grid/Staggered layout with cards.
+    - **Settings**: List of distinct groups (Account, App, Privacy).
+    - **Onboarding**: PageView with indicators and "Skip/Next" logic.
+2.  **Responsiveness**: Adapt layout for Tablet vs Phone automatically.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [App Layer]
+        direction TB
+        Route[App<br/>Router]:::service
+    end
+
+    subgraph Core [Layout Logic]
+        direction TB
+        Adaptive[Responsive<br/>Adapter]:::core
+    end
+
+    subgraph Views [Templates]
+        direction TB
+        Master[Master<br/>Detail]:::storage
+        Settings[Settings<br/>List]:::storage
+        Dash[Dashboard<br/>Grid]:::storage
+    end
+
+    %% Connections
+    Route -->|Push| Adaptive
+    Adaptive -->|Mobile| Settings
+    Adaptive -->|Tablet| Master
+    Adaptive -->|Desktop| Dash
+    Master -->|Select| Settings`}
+
+description={
+<p>
+Views are composed using intelligent Layout Adapters. The <strong>Responsive Adapter</strong> inspects
+screen constraints at runtime to select the most appropriate template (e.g. List vs Grid, or single-pane vs multi-pane).
+</p>
+}
+/>
+
+### API Design
+
+#### Settings View Example
+
+```dart
+SettingsView(
+    sections: [
+        SettingsSection(
+            title: "Account",
+            tiles: [
+                 SettingsTile(title: "Email", subtitle: "me@example.com"),
+                 SettingsTile.switch(title: "Dark Mode", value: true),
+            ]
+        )
+    ]
+)
+```
+
+#### Master-Detail Adapter
+
+Designed to work with `SplitView` layout logic.
+
+```dart
+MasterDetailView(
+    master: ProductList(),
+    detailBuilder: (id) => ProductDetails(id),
+    breakpoint: 800, // Show side-by-side if width > 800
+)
+```

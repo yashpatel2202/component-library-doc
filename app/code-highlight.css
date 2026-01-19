@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/* Rehype Pretty Code Styling */
+@layer utilities {
+  
+  /* 
+    Fix for Rehype Pretty Code Dual Themes:
+    Map the generated CSS variables to actual CSS properties.
+  */
+  
+  /* Light Mode (Default) */
+  pre[data-theme*=" "], 
+  code[data-theme*=" "] {
+    background-color: var(--shiki-light-bg) !important;
+    color: var(--shiki-light) !important;
+  }
+  
+  pre[data-theme*=" "] span,
+  code[data-theme*=" "] span {
+    color: var(--shiki-light);
+  }
+
+  /* Dark Mode - System Preference */
+  @media (prefers-color-scheme: dark) {
+    pre[data-theme*=" "], 
+    code[data-theme*=" "] {
+      background-color: var(--shiki-dark-bg) !important;
+      color: var(--shiki-dark) !important;
+    }
+
+    pre[data-theme*=" "] span, 
+    code[data-theme*=" "] span {
+      color: var(--shiki-dark);
+    }
+    
+    /* Dark Mode Border */
+    pre {
+      border-color: #27272a; /* zinc-800 */
+    }
+  }
+
+  /* Dark Mode - Class Strategy (Overrides System if present) */
+  .dark pre[data-theme*=" "],
+  .dark code[data-theme*=" "] {
+    background-color: var(--shiki-dark-bg) !important;
+    color: var(--shiki-dark) !important;
+  }
+  
+  .dark pre[data-theme*=" "] span,
+  .dark code[data-theme*=" "] span {
+    color: var(--shiki-dark);
+  }
+  
+  .dark pre {
+    border-color: #27272a; /* zinc-800 */
+  }
+
+  /* Structural Styles (Base) */
+  pre {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto; /* handle scrolling */
+    font-size: 0.875rem; /* text-sm */
+    line-height: 1.5rem; /* leading-6 */
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #e2e8f0; /* slate-200 */
+  }
+
+  /* Override Tailwind Prose Defaults to prevent conflicts */
+  .prose pre {
+    margin: 0 !important;
+  }
+
+  .prose pre code {
+    font-size: inherit !important;
+    font-weight: inherit !important;
+  }
+}

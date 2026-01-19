@@ -1,0 +1,47 @@
+<PageHeader title="Introduction" />
+
+### Purpose of Component Library
+
+- Reduce development level mistakes & efforts. 
+- Reduce testing iterations. 
+- Reduce repetitive testing efforts for common scenarios.
+
+```dart
+class _EntityHierarchy extends StatelessWidget {
+  const _EntityHierarchy();
+
+  @override
+  Widget build(BuildContext context) {
+    return HierarchicalTree<Entity, GeoLevel, EntityTreeService>(
+      config: HTConfig(
+        prefetchChildren: true,
+        search: LocalSearch(),
+      ),
+      tapConfig: TapSelection(type: MultiSelection()),
+      metas: [
+        HTMeta<String, Entity, EntityParentService>(),
+      ],
+    );
+  }
+}
+```
+
+Above few lines of code can render following UI
+
+<video
+  autoPlay
+  muted
+  loop
+  playsInline
+  className="rounded-xl"
+  style={{ width: "56%" }}
+  src="/guidelines/videos/location.mp4"
+></video>
+
+### How will it help to achieve our goal?
+
+- To load data, the developer just needs to provide the name of the service (for example, `EntityTreeService` in the above case). All behind-the-scenes processes, such as loading remote data and maintaining states, will be internally managed.
+- The component is also equipped with features like search. It can handle search internally, along with the option to perform remote search. The developer just needs to use the `search` parameter to toggle the behavior—that’s it. All processes will be managed by the component itself.
+- Tap behavior is customizable. It can be used simply to view the hierarchy, or alternatively, as a selection mechanism. Both single-select and multi-select can be enabled using a single field: `tapConfig`.
+- The component also supports extra metadata for each element. This can be configured with a customized UI by overriding the builder method for `HTMeta`.
+- All of the above features are managed in a **type-safe** manner. So, if a developer makes a mistake while writing code, the compiler will prompt for corrections before the build is created.

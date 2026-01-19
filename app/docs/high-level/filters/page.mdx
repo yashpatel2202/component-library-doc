@@ -1,0 +1,93 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+ 
+ # Filters
+
+## 1. Requirements Document
+
+### Overview
+
+A comprehensive filtering system capable of generating UI for complex queries (e.g., E-commerce product filters). It handles state, reset logic, and query string generation.
+
+### Functional Requirements
+
+1.  **Filter Types**:
+    - Range Slider (Price).
+    - Multi-Checkbox (Brands).
+    - Date Range.
+    - Search Text.
+2.  **Logic**:
+    - Count display (e.g., "Apple (5)").
+    - Dependency (Show "Wheel Size" only if Category is "Bikes").
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+ <ArchitectureGraph
+   diagram={`graph LR
+     %% Styles
+     classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+     classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+     classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+     %% Nodes
+     subgraph Client [UI Layer]
+         direction TB
+         UI[Filter<br/>View]:::service
+     end
+
+     subgraph Core [Logic Layer]
+         direction TB
+         Bloc[Filter<br/>Bloc]:::core
+         Builder[Query<br/>Builder]:::core
+     end
+
+     subgraph Data [Definitions]
+         direction TB
+         Defs[Filter<br/>Config]:::storage
+         State[Active<br/>State]:::storage
+     end
+
+     %% Connections
+     UI -->|Choice| Bloc
+     Defs -->|Init| Bloc
+     Bloc -->|Update| State
+     Bloc -->|Compile| Builder
+     Builder -->|QueryString| UI`}
+
+description={
+<p>
+The Filter Engine relies on a centralized <strong>Bloc</strong> to manage the complexity of independent
+filter states and their dependencies. It compiles the final state into a canonical query suitable for API consumption.
+</p>
+}
+/>
+
+### API Design
+
+#### Filter Definition
+
+```dart
+class FilterGroup {
+    final String key; // e.g., 'brand'
+    final String label;
+    final FilterType type;
+    final List<FilterOption> options;
+}
+```
+
+#### State Management
+
+Uses an internal `FilterBloc` that emits a canonical query string or map.
+
+```dart
+FilterBuilder(
+    definitions: [
+        FilterGroup(key: 'color', type: FilterType.checkbox, ...),
+        FilterGroup(key: 'price', type: FilterType.range, ...),
+    ],
+    onApply: (query) => fetchProducts(query),
+)
+```

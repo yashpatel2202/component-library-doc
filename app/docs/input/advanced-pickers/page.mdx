@@ -1,0 +1,109 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# Advanced Pickers
+
+## 1. Requirements Document
+
+### Overview
+
+Complex input components that require overlay dialogs or system integrations to select data types like Dates, Times, Files, and Colors.
+
+### Functional Requirements
+
+1.  **File Picker**:
+    - Single vs Multi-select.
+    - Extension filtering (e.g., only `.pdf`, `.jpg`).
+    - Max size limits.
+2.  **Date/Time Picker**:
+    - Range selection vs Single date.
+    - Min/Max date constraints.
+    - Localization support.
+3.  **Color Picker**:
+    - Palette selection vs HSV/RGB sliders.
+
+### Non-Functional Requirements
+
+- **Platform Native**: Should use native pickers (iOS/Android) where appropriate for familiarity, or fallback to custom responsive UI for Web/Desktop.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [App Layer]
+        direction TB
+        App[Feature<br/>Widget]:::service
+    end
+
+    subgraph Core [Picker Controller]
+        direction TB
+        Ctrl[Picker<br/>Logic]:::core
+    end
+
+    subgraph System [Platform Services]
+        direction TB
+        OS[Native<br/>OS Picker]:::storage
+        Perm[Permission<br/>Handler]:::storage
+    end
+
+    %% Connections
+    App -->|Invoke| Ctrl
+    Ctrl -->|Check| Perm
+    Ctrl -->|Open| OS
+    OS -.->|File/Date| Ctrl
+    Ctrl -->|Result| App`}
+
+description={
+<p>
+Advanced pickers abstract the complexities of native platform interactions.
+The <strong>Picker Logic</strong> handles permissions, configuration normalization,
+and mapping diverse native results into a unified Dart object.
+</p>
+}
+/>
+
+### API Design
+
+#### File Picker Configuration
+
+Using sealed classes to distinguish between picker modes.
+
+```dart
+sealed class FilePickerConfig {}
+
+class SingleFileConfig extends FilePickerConfig {
+    final List<String> allowedExtensions;
+    final int maxSizeMb;
+}
+
+class MultiFileConfig extends FilePickerConfig {
+    final int maxFiles;
+    // ...
+}
+```
+
+#### Usage
+
+```dart
+MyFilePicker(
+    config: SingleFileConfig(
+        allowedExtensions: ['jpg', 'png'],
+        maxSizeMb: 5,
+    ),
+    onResult: (file) => upload(file),
+)
+```
+
+### Internal Logic
+
+- **File Picker**: Wraps `file_picker` package or platform channels. Handles permission requests automatically (Storage/Photo Library).
+- **Abstractions**: Returns a unified `PlatformFile` object regardless of OS, containing bytes, path, and metadata.

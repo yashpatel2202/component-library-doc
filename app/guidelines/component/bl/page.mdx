@@ -1,0 +1,239 @@
+<PageHeader title="Internal BL" description="Internal Business Logic (BL) in Components" />
+
+## Composition of Internal BL
+
+Each component’s **Internal Business Logic** is composed of four core layers:
+
+1. **Data Layer**
+   - Repository \+ Service classes.
+   - Abstracts remote/local data fetching.
+2. **State Managers**
+   - Consumes service layer.
+   - Tracks loading, success, error states.
+   - Reflects UI updates according to state changes.
+3. **Configurations**
+   - Customization options for UI, behavior, and interactions.
+   - Can switch between **Default**, **Semi-custom**, and **Full-custom** layouts.
+4. **Interconnectivity**
+   - Mixins and interfaces to connect services, models, and widgets.
+   - Allows developers to extend functionality with minimal boilerplate.
+
+---
+
+## Service Injection & Configuration
+
+- Every service class is defined as a **generic class**, so components remain reusable.
+- **Service object creation is configurable**:
+  - Developer can **pass a service instance** directly to the component.
+  - If not passed, component resolves service instance via `get_it`**DI container** .
+- Developer must configure `get_it` in the app:
+
+**Component usage (auto inject):**
+
+```dart
+HierarchicalTree<MyNode, MyLevel, MyTreeService>();
+```
+
+**Component usage (explicit service):**
+
+```dart
+HierarchicalTree<MyNode, MyLevel, MyTreeService>(
+  serviceProvider: (context) => MyTreeServiceImpl(),
+);
+```
+
+---
+
+## Mixins for Models & Services
+
+### **TreeNodeMixin**
+
+Defines the **data model contract** for hierarchical nodes.
+
+```dart
+mixin TreeNodeMixin<T> {
+  String get id;
+  String get levelId;
+  String get name;
+  bool? get expandable => null;
+  T get value;
+  String? get parentId => null;
+}
+```
+
+---
+
+### **TreeServiceMixin**
+
+Defines the **contract for fetching hierarchical data**.
+
+```dart
+mixin TreeServiceMixin<T extends TreeNodeMixin, L extends TreeLevelMixin<L>> {
+  Future<(List<T> nodes, bool hasMore)> loadChildren(
+    T? parent, {String? levelId, String? search, int? page});
+
+  Future<List<L>> loadLevels();
+}
+```
+
+Example implementation:
+
+```dart
+class MyTreeService with TreeServiceMixin<MyNode, MyLevel> {
+  @override
+  Future<(List<MyNode>, bool hasMore)> loadChildren(
+      MyNode? parent, {String? levelId, String? search, int? page}) async {
+    // Fetch children from API or database
+    return ([MyNode("1", "Root", "lvl1", MyNode("1", "Root", "lvl1", null))], false);
+  }
+
+  @override
+  Future<List<MyLevel>> loadLevels() async {
+    // Fetch levels metadata
+    return [MyLevel("lvl1", "Root Level")];
+  }
+}
+```
+
+---
+
+## State Management Responsibilities
+
+Each **state manager (e.g., BLoC, Cubit)** has 3 responsibilities:
+
+1. **Data Fetching**
+   - Use `TreeServiceMixin` to fetch data from remote API/local cache.
+2. **State Lifecycle**
+   - Manage **loading**, **loaded**, **empty**, **error** states.
+3. **UI Reflection**
+   - **Default Layout** → Render prebuilt widgets.
+   - **Semi-custom Layout** → Provide widget parts to builder.
+   - **Full-custom Layout** → Provide raw data models to builder.
+
+---
+
+## Customization via Configurations
+
+### UI Configurations
+
+```dart
+sealed class HTUIConfig {
+  const HTUIConfig();
+}
+
+class DefaultHTUI extends HTUIConfig {
+  final HTBoxDecoration decoration;
+  const DefaultHTUI({this.decoration = const PlainDecoration()});
+}
+
+sealed class HTBoxDecoration {
+  const HTBoxDecoration();
+}
+
+class ContainerDecoration extends HTBoxDecoration {
+  const ContainerDecoration();
+}
+
+class PlainDecoration extends HTBoxDecoration {
+  const PlainDecoration();
+}
+
+class SemiCustomHTUI extends HTUIConfig {
+  // callback builder function with widget list
+  const SemiCustomHTUI();
+}
+
+class CustomHTUI extends HTUIConfig {
+  // callback builder function with relevant data
+  const CustomHTUI();
+}
+```
+
+---
+
+### Tap Configurations (Interaction Layer)
+
+```dart
+sealed class HTTapConfig<T extends TreeNodeMixin<T>> {
+  const HTTapConfig();
+}
+
+class TapCallback<T extends TreeNodeMixin<T>> extends HTTapConfig<T> {
+  final void Function(T node) onTap;
+  const TapCallback({required this.onTap});
+}
+
+class TapSelection<T extends TreeNodeMixin<T>> extends HTTapConfig<T> {
+  final SelectionType type;
+  final void Function(List<T> nodes)? onChanged;
+  const TapSelection({required this.type, this.onChanged});
+}
+
+sealed class SelectionType {
+  final bool showChildSelectedOnParentSelection;
+  const SelectionType({required this.showChildSelectedOnParentSelection});
+}
+
+class SingleSelection extends SelectionType {
+  const SingleSelection({super.showChildSelectedOnParentSelection = false});
+}
+
+class MultiSelection extends SelectionType {
+  final bool allowMultiLevelSelection;
+  const MultiSelection({
+    super.showChildSelectedOnParentSelection = true,
+    this.allowMultiLevelSelection = true,
+  });
+}
+```
+
+---
+
+## Example: HierarchicalTree Component
+
+```dart
+class HierarchicalTree<T extends TreeNodeMixin<T>, 
+                       L extends TreeLevelMixin<L>, 
+                       S extends TreeServiceMixin<T, L>>
+   extends StatelessWidget {
+  final S Function(BuildContext context)? serviceProvider;
+  final HTConfig config;
+  final HTTapConfig<T>? tapConfig;
+  final HTUIConfig uiConfig;
+  final List<HTMeta> metas;
+
+  const HierarchicalTree({
+    super.key,
+    this.serviceProvider,
+    this.config = const HTConfig(),
+    this.tapConfig,
+    this.uiConfig = const DefaultHTUI(),
+    this.metas = const [],
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => HierarchicalTreeBloc<T, L, S>(
+        serviceProvider?.call(context) ?? GetIt.I<S>(),
+        config,
+        tapConfig,
+      )..add(const LoadRootNodes()),
+      child: Column(
+        children: [
+          _SearchBar<T, L, S>(config: config),
+          _CountBar<T, L, S>(config: config, tapConfig: tapConfig),
+          const SizedBox(height: 5),
+          KDivider(),
+          Expanded(
+            child: _HierarchicalTreeView<T, L, S>(
+              metas: metas,
+              uiConfig: uiConfig,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```

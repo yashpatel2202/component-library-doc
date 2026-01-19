@@ -1,0 +1,125 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+ 
+ # Notification Manager
+
+## 1. Requirements Document
+
+### Overview
+
+A global manager for dispatching and handling notifications, including in-app toasts, snackbars, and push notifications.
+
+### User Stories
+
+- **As a Developer**, I want to show a success message after a form submission.
+- **As a User**, I want to be alerted if an error occurs.
+- **As a Developer**, I want a unified API to handle both local and push notifications.
+
+### Functional Requirements
+
+1.  **Notification Types**:
+    - Toast (Float overlay).
+    - Snackbar (Bottom sheet style).
+    - Banner (Top of screen).
+    - Dialog (Blocking alert).
+2.  **Display Logic**:
+    - Stacking vs Replacing.
+    - Duration configuration (auto-dismiss).
+3.  **Actions**:
+    - Support for action buttons (e.g., "Undo" in a snackbar).
+
+### Non-Functional Requirements
+
+- **Context-Free**: Should be callable from logic layers without needing a `BuildContext` passed everywhere (using GlobalKey).
+- **Accessibility**: Support for screen readers.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [Business Layer]
+        direction TB
+        Logic[Business<br/>Logic]:::service
+    end
+
+    subgraph Core [System Core]
+        direction TB
+        NM[Notification<br/>Manager]:::core
+    end
+
+    subgraph UI [Presentation]
+        direction TB
+        Overlay[App<br/>Overlay]:::storage
+        Native[Native<br/>Push]:::storage
+    end
+
+    %% Connections
+    Logic -->|Request| NM
+    NM -->|Inject| Overlay
+    NM -->|Schedule| Native
+    Overlay -.->|Dismiss| NM`}
+
+description={
+<p>
+The <strong>NotificationManager</strong> acts as a bridge between your business logic and the UI overlay system.
+It handles the queuing, prioritizing, and displaying of alerts without requiring tight coupling to the Widget tree.
+</p>
+}
+/>
+
+### API Design
+
+#### Notification Model
+
+```dart
+sealed class NotificationType {}
+class Toast extends NotificationType {}
+class Banner extends NotificationType {
+    final IconData icon;
+    const Banner({this.icon});
+}
+
+class NotificationConfig {
+    final String title;
+    final String? message;
+    final NotificationType type;
+    final Duration duration;
+
+    // ...
+}
+```
+
+#### Global Usage (No Context)
+
+To achieve context-free usage, we rely on a `GlobalKey<NavigatorState>` or a dedicated library service locator.
+
+```dart
+// Setup in MaterialApp
+MaterialApp(
+    navigatorKey: NotificationManager.navigatorKey,
+    // ...
+);
+
+// Call from anywhere
+NotificationManager.show(
+    NotificationConfig(
+        title: "Saved!",
+        type: Toast(),
+    )
+);
+```
+
+### Theming
+
+- **Toast**: Uses `CardTheme` for shape and `ColorScheme.surface` for background.
+- **Error Banner**: Defaults to `ColorScheme.errorContainer`.
+- **Animations**: Standard `CurvedAnimation` with `Curves.easeInOut`.

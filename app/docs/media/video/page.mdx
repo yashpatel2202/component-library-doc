@@ -1,0 +1,84 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# Video Player
+
+## 1. Requirements Document
+
+### Overview
+
+A comprehensive video player supporting various formats, quality switching, and picture-in-picture mode. It wraps system-native players for optimal performance while providing a consistent Flutter UI.
+
+### User Stories
+
+- **As a User**, I want video playback to continue in a small floating window (PiP) while I browse other content.
+- **As a User**, I want to change quality (e.g., to 1080p) manually if my connection is good.
+- **As a Developer**, I want to play HLS streams easily.
+
+### Functional Requirements
+
+1.  **Controls**: Play/Pause, Seek bar, Volume/Mute, Fullscreen toggle.
+2.  **Formats**: HLS (.m3u8), MP4, DASH.
+3.  **Features**:
+    - Auto-play / Loop configuration.
+    - Picture-in-Picture (PiP) support.
+    - Captions / Subtitles.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph UI [Player UI]
+        direction TB
+        Overlay[Controls<br/>Overlay]:::service
+        Surface[Video<br/>Surface]:::service
+    end
+
+    subgraph Logic [Controller]
+        direction TB
+        Ctrl[Video<br/>Controller]:::core
+    end
+
+    subgraph System [Native Layer]
+        direction TB
+        Native[Native<br/>Player]:::storage
+        Pip[PiP<br/>Service]:::storage
+    end
+
+    %% Connections
+    Overlay -->|Action| Ctrl
+    Ctrl -->|State| Surface
+    Ctrl -->|Command| Native
+    Ctrl -.->|Float| Pip
+    Native -->|Texture| Surface`}
+
+description={
+<p>
+The <strong>Video Controller</strong> acts as the central brain, bridging the gap between the
+Flutter UI (Controls & Surface) and the platform's native player (ExoPlayer/AVPlayer).
+It handles state synchronization for features like PiP and Fullscreen.
+</p>
+}
+/>
+
+### API Design
+
+#### Usage
+
+```dart
+MyVideoPlayer(
+  source: MediaSource.network("https://stream.mux.com/hls.m3u8"),
+  autoPlay: false,
+  showControls: true,
+  enablePip: true,
+)
+```

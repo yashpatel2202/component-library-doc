@@ -1,0 +1,67 @@
+<PageHeader title="Baseline" description="Guidelines for 'must have' properties in component" />
+
+### Requirements Breakdown & Implications
+
+1. **It must be loaded as dependency.**
+   - Should be published as an **independent package** (currently as independent github repo).
+   - Applications import it as a library, not copy/paste code.
+   - Suggests **versioned releases** and **semantic versioning**.
+2. **Can adapt cross-application theming.**
+   - Needs a **global theming system**.
+   - Themes should be **pluggable per application**.
+3. **Minimal Integration efforts.**
+   - Components should have **sensible defaults**.
+   - Integration should be just:
+
+     ```dart
+     KMultiSelectDropDown<LookUp>(
+     	name: SInfoQuestion.fContri.name,
+     	label: SInfoQuestion.fContri.question,
+     	items: state.meta.lookUps,
+     ),
+     ```
+   - Avoid heavy configuration.
+4. **Compile-time errors for missing implementations.**
+   - Strongly typed with **Generics/Interfaces**.
+   - If a component requires a handler or prop, the compiler should fail.
+   - Example:
+
+     ```dart
+     mixin KSelectable<T> implements Equatable {
+       T get value;
+     
+       String get displayName;
+     }
+     
+     class Country with KSelectable<Country> { //<----- Must give compile time error. Developer must override respective fields.
+       final int id;
+       final String name;
+     
+       const Country({this.id = 0, this.name = ''});
+     }
+     ```
+5. **Layout must be configurable & overridable without rewriting component internal logic.**
+   - Use **composition over inheritance**.
+   - Expose builders for layout overrides.
+   - Example:
+
+     ```dart
+     HTMeta<String, Entity, EntityParentService>(
+     	builder: (_, value, __) {
+     		return Padding(
+     					padding: EdgeInsets.only(left: 30),
+     					child: Text(value ?? ''),
+                 	);
+               },
+     )
+     
+     ```
+6. **Partial use also should be allowed whenever required.**
+   - Consumers can import **only required components**.
+   - For more clarification, check [interdependent components](/advanced/interdepend).
+7. **State management & data management must be implicit.**
+   - Components should handle **local state internally** (e.g., load data, show shimmers, modal open/close, dropdown toggle).
+   - Allow optional controlled state for advanced use.
+8. **Must be scalable for future expansions.**
+   - Should follow `SOLID` principles.
+   - Should follow `DRY` principle.

@@ -1,0 +1,106 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# CMS Pages
+
+## 1. Requirements Document
+
+### Overview
+
+A dynamic page renderer that interprets JSON/Server-driven UI definitions to build screens on the fly. This allows content updates without app store releases.
+
+### User Stories
+
+- **As a Content Manager**, I want to update the "Terms of Service" text immediately.
+- **As a Developer**, I want to map server-side "blocks" to Flutter widgets.
+
+### Functional Requirements
+
+1.  **Block Rendering**: Support for Text, Image, Video, Spacer, Divider blocks.
+2.  **Layouts**: Support for Column, Row, and Grid arrangements.
+3.  **Actions**: Clickable areas that can navigate or trigger deep links.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [App Layer]
+        direction TB
+        Page[CMS<br/>Page]:::service
+    end
+
+    subgraph Core [Render Engine]
+        direction TB
+        Parser[Block<br/>Parser]:::core
+        Reg[Widget<br/>Registry]:::core
+    end
+
+    subgraph Data [Data Layer]
+        direction TB
+        Remote[API<br/>Response]:::storage
+    end
+
+    %% Connections
+    Page -->|Slug| Remote
+    Remote --JSON--> Parser
+    Parser --Type--> Reg
+    Reg --Widget--> Page`}
+
+description={
+<p>
+The CMS Parser decodes raw JSON responses into native Flutter widgets using a
+runtime registry. This decoupling allows the server to dictate layout without
+client-side code changes.
+</p>
+}
+/>
+
+### API Design
+
+#### JSON Schema
+
+```json
+{
+  "page_title": "About Us",
+  "blocks": [
+    {
+      "type": "hero_image",
+      "data": { "url": "..." }
+    },
+    {
+      "type": "rich_text",
+      "data": { "content": "<h1>Hello</h1>" }
+    }
+  ]
+}
+```
+
+#### Widget Mapper
+
+A registry that maps string types to Widget builders.
+
+```dart
+final Map<String, CMSBlockBuilder> registry = {
+    'hero_image': (data) => HeroImageBlock(data),
+    'rich_text': (data) => RichTextBlock(data),
+};
+```
+
+### Usage
+
+```dart
+CMSPage(
+    slug: 'about-us',
+    registry: myAppRegistry,
+    placeholder: LoadingSpinner(),
+);
+```

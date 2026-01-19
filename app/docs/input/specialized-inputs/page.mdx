@@ -1,0 +1,96 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# Specialized Inputs
+
+## 1. Requirements Document
+
+### Overview
+
+Hardware-integrated input components for capturing data from the physical world, such as QR codes, Barcodes, and NFC tags.
+
+### User Stories
+
+- **As a Warehouse Manager**, I want to scan a product barcode to auto-fill its ID.
+- **As an Event Organizer**, I want to scan QR tickets to validate entry.
+- **As a Developer**, I want to easily toggle the camera flash/torch during scanning.
+
+### Functional Requirements
+
+1.  **Scanning**:
+    - Fast recognition of common formats (QR, EAN-13, UPC).
+    - Customizable scan area (Overlay).
+2.  **Hardware Control**:
+    - Camera switching (Front/Back).
+    - Torch Toggle.
+3.  **Permissions**:
+    - Gracefully handle camera permission denial with custom UI.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [UI Layer]
+        direction TB
+        Widget[Scanner<br/>Widget]:::service
+    end
+
+    subgraph Core [Logic Layer]
+        direction TB
+        Ctrl[Camera<br/>Controller]:::core
+        Engine[Decoder<br/>Engine]:::core
+    end
+
+    subgraph HW [Hardware]
+        direction TB
+        Cam[Camera<br/>Stream]:::storage
+        Flash[Torch<br/>Light]:::storage
+    end
+
+    %% Connections
+    Widget -->|Init| Ctrl
+    Ctrl -->|Open| Cam
+    Cam -.->|Frame| Engine
+    Engine -->|Result| Widget
+    Ctrl -->|Toggle| Flash`}
+
+description={
+<p>
+Specialized inputs require deep hardware integration. The <strong>Camera Controller</strong> establishes
+the data stream, while the <strong>Decoder Engine</strong> processes frames in a background isolate
+to ensure the main UI thread remains responsive (60fps).
+</p>
+}
+/>
+
+### API Design
+
+#### Scanner Configuration
+
+```dart
+class ScannerConfig {
+    final List<BarcodeFormat> formats; // [qr, ean13]
+    final bool showOverlay;
+    final bool startEnabled;
+
+    const ScannerConfig({
+        this.formats = const [BarcodeFormat.qr],
+        this.showOverlay = true,
+        this.startEnabled = true
+    });
+}
+```
+
+### Internal Logic
+
+- **Decoder**: Runs in a background isolate to prevent UI jank during image processing.
+- **LifeCycle**: Automatically pauses camera stream when app goes to background (`didChangeAppLifecycleState`).

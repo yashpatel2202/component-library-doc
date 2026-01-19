@@ -1,0 +1,199 @@
+<PageHeader title="Theming" />
+
+### 1. **Theme Elements**
+
+- **Color Palette**
+  - Primary, Secondary, Background, Surface, Error, Success, Warning, Info
+  - Shades (light/dark variations)
+- **Typography**
+  - Font Family, Font Sizes, Font Weights, Line Heights, Letter Spacing
+
+---
+
+### 2. **Theme Injection Levels**
+
+Theme values should be **inherited via context BuildContext**, and can be injected at multiple scopes.
+
+- **L1: Root-level Theme (Global Base)**
+  - Default theme provided by the component library.
+  - Can be initialized from the **application-level theme model**, but transformed into the component’s internal theme model.
+- **L2: Parent-level Theme Override**
+  - Any ancestor container (e.g., Section, Page, Layout) can override a subset of theme values.
+  - Example: A dark section inside a light page.
+- **L3: Component-level Theme Override**
+  - Individual components can directly override theme values via props/config.
+
+---
+
+### 3. **Priority of Resolution**
+
+Theme values are resolved using a **fallback chain**:
+
+```
+L3 (Component-level override)  
+   ⬇  
+L2 (Parent-level override)  
+   ⬇  
+L1 (Root/Application-level base)  
+   ⬇  
+Default (library-defined defaults)
+```
+
+This ensures components are **customizable at any granularity** without breaking global consistency.
+
+---
+
+### 4. **Component Theme Model vs App Theme Model**
+
+- The **Application-level theme model** (e.g., Flutter `ThemeData`) may contain global brand-wide settings.
+- Before injection, this is **mapped/transformed** into the **Component-level theme model**, which is:
+  - **Simplified** → only includes what components need (colors \+ typography).
+  - **Decoupled** → prevents breaking changes if the app’s theme evolves differently.
+
+### Example
+
+> Application Level
+
+```dart
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<RootBloc, RootState>(
+      builder: (context, state) {
+        return MaterialApp.router(
+          theme: Theme.of(context).copyWith(
+            extensions: [
+              state.theme,
+              state.config,
+              MyComponentTheme(
+                // injection level-1
+                color: state.theme.primary,
+                errorColor: state.theme.basic.red,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MyComponentThemeData(
+      // injection level-2
+      data: MyComponentTheme(
+        color: context.theme.primary,
+        errorColor: context.theme.basic.red,
+      ),
+      child: Column(
+        // n-level of parent-hierarchy of widget
+        children: [
+          Container(
+            // n-level of parent-hierarchy of widget
+            child: MyComponent(
+              theme: MyComponentTheme(
+                // injection level-3
+                color: context.theme.primary,
+                errorColor: context.theme.basic.red,
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+```
+
+> Component Level
+
+```dart
+class MyComponentTheme extends ThemeExtension<MyComponentTheme> {
+  final Color color;
+  final Color errorColor;
+
+  const MyComponentTheme({
+    required this.color,
+    required this.errorColor,
+  });
+
+  // set default values here
+  static get empty => MyComponentTheme(
+        color: Colors.blue,
+        errorColor: Colors.red,
+      );
+}
+
+class MyComponentThemeData extends StatelessWidget {
+  final MyComponentTheme data;
+  final Widget child;
+
+  const MyComponentThemeData({
+    super.key,
+    required this.data,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return child;
+  }
+}
+
+class MyComponent extends StatelessWidget {
+  final MyComponentTheme? theme;
+  // other properties
+
+  const MyComponent({super.key, this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return MyComponentThemeData(
+      // sequence is important here
+      //
+      // current theme-data >
+      //    very immediate parent theme-data >
+      //      root-level theme-data >
+      //          default theme-data
+      data: theme ??
+          context.findAncestorWidgetOfExactType<MyComponentThemeData>()?.data ??
+          Theme.of(context).extension<MyComponentTheme>() ??
+          MyComponentTheme.empty,
+      child: const _MyComponent(),
+    );
+  }
+}
+
+extension ConfigExtensions on BuildContext {
+  MyComponentTheme get myCompTheme =>
+      findAncestorWidgetOfExactType<MyComponentThemeData>()?.data ?? MyComponentTheme.empty;
+}
+
+class _MyComponent extends StatelessWidget {
+  // properties
+
+  const _MyComponent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          'Hello world!',
+          style: TextStyle(color: context.myCompTheme.color),
+        ),
+        Text(
+          'World has an error!',
+          style: TextStyle(color: context.myCompTheme.errorColor),
+        ),
+      ],
+    );
+  }
+}
+```

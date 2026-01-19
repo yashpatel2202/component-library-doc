@@ -1,0 +1,118 @@
+<PageHeader title="Route-Aware Components" />
+
+Some components are not limited to the current screen — they may **navigate to new routes** to show additional functionality.
+
+**Example:**
+
+- An **Audio component** not only plays a track but also lets the user **open a playlist screen** with more details.
+- A **Chat component** may show a chat preview inside a feed, and then open a **full chat screen** when tapped.
+
+---
+
+## Key Design Decisions
+
+1. **Use go_router**
+   - All navigation must use `go_router`, since our applications follow a **declarative routing** pattern.
+2. **Expose Route List**
+   - Components should **expose a list of routes** (`GoRoute`) that can be added to the app’s main router.
+   - This ensures routes are defined upfront (as required by go_router).
+3. **Theming**
+   - Theming must be passed **inherited way** (using `Theme.of(context)` or custom `InheritedWidget`), so sub-routes look consistent with the rest of the app.
+
+---
+
+## Example: Audio Component with Playlist Route
+
+### Audio Component (Clickable → Navigates to Playlist)
+
+```dart
+class AudioComponent extends StatelessWidget {
+  final String playlistId;
+
+  const AudioComponent({super.key, required this.playlistId});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.music_note),
+      title: Text("Playlist $playlistId"),
+      onTap: () {
+        // Declarative navigation
+        context.go('/playlist/$playlistId');
+      },
+    );
+  }
+
+  /// Routes exposed by this component
+  static List<GoRoute> routes = [
+    GoRoute(
+      path: '/playlist/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return PlaylistScreen(playlistId: id);
+      },
+    ),
+  ];
+}
+```
+
+### Playlist Screen (Standalone UI)
+
+```dart
+class PlaylistScreen extends StatelessWidget {
+  final String playlistId;
+
+  const PlaylistScreen({super.key, required this.playlistId});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context); // Inherited theme still applies
+
+    return Scaffold(
+      appBar: AppBar(title: Text("Playlist $playlistId")),
+      body: Center(
+        child: Text(
+          "Songs for playlist $playlistId",
+          style: theme.textTheme.bodyLarge,
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Application Router (Using Component Routes)
+
+```dart
+final GoRouter router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const HomeScreen(),
+    ),
+    // Inject component routes here
+    ...AudioComponent.routes,
+  ],
+);
+```
+
+### Home Screen Example
+
+```dart
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Home")),
+      body: ListView(
+        children: const [
+          AudioComponent(playlistId: "101"),
+          AudioComponent(playlistId: "202"),
+        ],
+      ),
+    );
+  }
+}
+```

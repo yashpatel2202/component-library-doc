@@ -1,0 +1,240 @@
+<PageHeader title="Scope of Component" />
+
+## **1. Limited Scope Components**
+
+- Their **existence only matters when they are written in the widget tree**.
+- They don’t need to notify ancestors or persist beyond their immediate lifecycle.
+- Typical examples: `Text`, `Container`, `Padding`, `Icon`.
+
+They **just render** and don’t communicate with higher-level structures.
+
+### Example: Limited Scope Widget
+
+```dart
+class LimitedScopeWidget extends StatelessWidget {
+  final String text;
+
+  const LimitedScopeWidget({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(fontSize: 18, color: Colors.black),
+    );
+  }
+}
+
+// Usage:
+Column(
+  children: const [
+    LimitedScopeWidget(text: "Hello"),
+    LimitedScopeWidget(text: "World"),
+  ],
+);
+```
+
+---
+
+## **2. Wide Range Scope Components**
+
+- Their **existence matters higher up in the tree hierarchy**.
+- They aren’t always used in isolation; instead, they **participate in a larger system**.
+- They must **register themselves with a parent/manager** and **withdraw on dispose**.
+
+### Use Cases
+
+- **Form Fields**: Each `TextFormField` must register with `FormBuilder` so validation considers all fields.
+- **Audio Components**: Each `AudioTrack` must register with a parent `AudioScaffold`, so that the scaffold knows about all tracks in the album (e.g., for a “Play All” button).
+
+---
+
+## Solution Pattern: Register \+ Withdraw Strategy
+
+- **Listener Component** (Higher level, parent): Maintains a registry of child components.
+- **Broadcaster Component** (Lower level, child): Registers itself when created, withdraws when destroyed.
+- Achieved via **inherited widget \+ lifecycle hooks**.
+
+---
+
+## Example: Audio Component (Register \+ Withdraw)
+
+### Step 1: AudioBloc
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+/// ----- DATA MODEL -----
+class AudioTrackData {
+  final String id;
+  final String title;
+
+  const AudioTrackData(this.id, this.title);
+}
+
+/// ----- EVENTS -----
+sealed class AudioEvent {}
+
+class RegisterTrack extends AudioEvent {
+  final AudioTrackData track;
+  RegisterTrack(this.track);
+}
+
+class WithdrawTrack extends AudioEvent {
+  final AudioTrackData track;
+  WithdrawTrack(this.track);
+}
+
+/// ----- STATE -----
+class AudioState {
+  final List<AudioTrackData> tracks;
+  const AudioState(this.tracks);
+}
+
+/// ----- BLOC -----
+class AudioBloc extends Bloc<AudioEvent, AudioState> {
+  AudioBloc() : super(const AudioState([])) {
+    on<RegisterTrack>((event, emit) {
+      emit(AudioState([...state.tracks, event.track]));
+    });
+
+    on<WithdrawTrack>((event, emit) {
+      emit(AudioState(
+        state.tracks.where((t) => t.id != event.track.id).toList(),
+      ));
+    });
+  }
+}
+```
+
+### Step 2: Parent Listener → `AudioScaffold`
+
+```dart
+class AudioScaffold extends StatelessWidget {
+  final Widget child;
+
+  const AudioScaffold({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => AudioBloc(),
+      child: BlocBuilder<AudioBloc, AudioState>(
+        builder: (context, state) {
+          return Stack(
+            children: [
+              child,
+              if (state.tracks.isNotEmpty)
+                Positioned(
+                  bottom: 20,
+                  right: 20,
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      for (var track in state.tracks) {
+                        debugPrint("Playing ${track.title}");
+                      }
+                    },
+                    child: const Icon(Icons.play_arrow),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+```
+
+### Step 3: Auto-Register & Auto-Withdraw Wrapper
+
+We make a **stateless wrapper** that handles lifecycle registration \+ withdrawal.
+
+```dart
+class AudioTrackRegistrar extends StatefulWidget {
+  final AudioTrackData data;
+  final Widget child;
+
+  const AudioTrackRegistrar({
+    super.key,
+    required this.data,
+    required this.child,
+  });
+
+  @override
+  State<AudioTrackRegistrar> createState() => _AudioTrackRegistrarState();
+}
+
+class _AudioTrackRegistrarState extends State<AudioTrackRegistrar> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<AudioBloc>().add(RegisterTrack(widget.data));
+  }
+
+  @override
+  void dispose() {
+    context.read<AudioBloc>().add(WithdrawTrack(widget.data));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+### Step 4: The Actual `AudioTrack` Component
+
+```dart
+class AudioTrack extends StatelessWidget {
+  final AudioTrackData data;
+
+  const AudioTrack({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return AudioTrackRegistrar(
+      data: data,
+      child: ListTile(
+        title: Text(data.title),
+        trailing: IconButton(
+          icon: const Icon(Icons.play_arrow),
+          onPressed: () {
+            debugPrint("Playing single track: ${data.title}");
+          },
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Step 5: Usage Example
+
+```dart
+void main() {
+  runApp(const MaterialApp(
+    home: Scaffold(
+      body: AudioScaffold(
+        child: AudioAlbum(),
+      ),
+    ),
+  ));
+}
+
+class AudioAlbum extends StatelessWidget {
+  const AudioAlbum({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: const [
+        AudioTrack(data: AudioTrackData("1", "Song One")),
+        AudioTrack(data: AudioTrackData("2", "Song Two")),
+        AudioTrack(data: AudioTrackData("3", "Song Three")),
+      ],
+    );
+  }
+}
+```

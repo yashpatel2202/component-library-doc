@@ -1,0 +1,77 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# PDF Viewer
+
+## 1. Requirements Document
+
+### Overview
+
+A high-performance PDF renderer that can handle large documents with features like search, page navigation, and link support.
+
+### User Stories
+
+- **As a User**, I want to open large PDF reports without the app freezing.
+- **As a User**, I want to search for specific text within the document.
+
+### Functional Requirements
+
+1.  **Rendering**: Vector-based rendering (sharp at any zoom level).
+2.  **Navigation**: Jump to page, Bookmarks, Thumbnails.
+3.  **Search**: Highlight text matches.
+4.  **Source**: Network (download & cache), Asset, File.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph UI [Viewer]
+        direction TB
+        View[Page<br/>View]:::service
+    end
+
+    subgraph Core [Engine]
+        direction TB
+        Doc[PDF<br/>Document]:::core
+    end
+
+    subgraph Native [Platform]
+        direction TB
+        Renderer[Native<br/>Renderer]:::storage
+    end
+
+    %% Connections
+    View -->|Request Page| Doc
+    Doc -->|Render| Renderer
+    Renderer -->|Bitmap| View
+    View -->|Search| Doc`}
+
+description={
+<p>
+The <strong>PDF Document</strong> engine manages the connection to the native renderer (PDFium on Android,
+PDFKit on iOS). It employs <strong>Lazy Loading</strong> strategies to only render the pages currently
+visible in the viewport to save memory.
+</p>
+}
+/>
+
+### API Design
+
+#### Usage
+
+```dart
+PdfViewer(
+  source: "https://example.com/report.pdf",
+  enableSearch: true,
+  onPageChanged: (page) => print("Page $page"),
+)
+```

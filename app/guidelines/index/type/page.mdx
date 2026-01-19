@@ -1,0 +1,47 @@
+<PageHeader title="Types of Component" />
+
+## 1. **Low-Level Components**
+
+> Foundational building blocks. Reusable, theme-aware, and framework-agnostic where possible.
+
+### 1.1 Utility Components
+
+- **1.1.1 Download Manager / File Storage**
+  - Handles file downloads, offline sync, local storage.
+- **1.1.2 Cache Manager / Data Storage**
+  - Provides client-side persistence (memory, localStorage, IndexedDB).
+- **1.1.3 Notification Manager**
+  - Manages global notifications, toasts, alerts.
+
+### 1.2 Input Components
+
+- **1.2.1 Basic Inputs**
+  - Text Fields, Text Area, Dropdowns, Select, Checkbox, Radio, Toggle, Slider.
+- **1.2.2 Advanced Pickers**
+  - File Pickers, Date/Time Pickers, Color Pickers.
+- **1.2.3 Specialized Inputs**
+  - QR Code Scanners, NFC Readers, Barcode Scanners.
+
+### 1.3 Media Components
+
+- **1.3.1 Media Handling**
+  - Image (view, lazy-load).
+  - Video (player with playback controls).
+  - Audio (player with controls).
+  - File (as of now PDFs).
+
+---
+
+## 2. **High-Level Components**
+
+> Composed from low-level components, often domain-specific.
+
+- **2.1 CMS Pages**
+  - Dynamic, editable content pages.
+  - layout customization.
+- **2.2 Filters**
+  - Dynamic filter builders for data sets (checkbox filters, search, date ranges).
+  - Integrated with Cache/Data Manager.
+- **2.3 Views / Screens**
+  - Full application-level compositions.
+  - Example: Dashboards, Profile Screens, Settings Pages, List/Grid Views.

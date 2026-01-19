@@ -1,0 +1,164 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+
+# Download Manager / File Storage
+
+## 1. Requirements Document
+
+### Overview
+
+A robust utility component responsible for handling file downloads, offline synchronization, and local storage management. It abstracts the complexities of file I/O, permission handling, and background processing.
+
+### User Stories
+
+- **As a User**, I want to download files (PDFs, Videos) so I can access them offline.
+- **As a User**, I want to see the progress of my downloads.
+- **As a Developer**, I want to pause, resume, and cancel downloads programmatically.
+- **As a Developer**, I want to store files in a secure, app-specific directory by default.
+
+### Functional Requirements
+
+1.  **Download Management**:
+    - Start, Pause, Resume, Cancel, Retry.
+    - Queue management (concurrent vs sequential downloads).
+2.  **Storage**:
+    - Save to internal storage (secure) or external storage (public).
+    - File encryption option for sensitive data.
+3.  **Events & Callbacks**:
+    - Progress updates (0-100%).
+    - Success/Error callbacks.
+4.  **Offline Sync**:
+    - Auto-retry on connectivity restoration.
+
+### Non-Functional Requirements
+
+- **Performance**: Minimal impact on UI thread; heavy work in background isolate.
+- **Reliability**: Graceful handling of network interruptions.
+- **Security**: Strict permission checks (Storage/Internet).
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles - Restored Original
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+    classDef network fill:#eff6ff,stroke:#93c5fd,stroke-width:2px,color:#1e40af,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [User Space]
+        direction TB
+        UI[User Interface]:::service
+    end
+
+    subgraph Core [System Core]
+        direction TB
+        DM[Download <br/> Manager]:::core
+    end
+
+    subgraph Backend [Infrastructure]
+        direction TB
+        Net[Network<br/>Service]:::network
+        Store[Local<br/>Storage]:::storage
+        Cache[Cache<br/>Layer]:::storage
+    end
+
+    %% Connections
+    UI -->|Start| DM
+    DM -->|Fetch| Net
+    DM -->|Write| Store
+    DM -.->|Check| Cache
+    Net -.->|Stream| DM
+    DM -->|Progress| UI`}
+
+description={
+
+<>
+<p>
+The <strong>DownloadManager</strong> acts as the central facade,
+orchestrating interactions between the network layer and storage.
+</p>
+<ul className="list-disc pl-4 space-y-2 mt-2">
+<li>
+It consumes <code>DownloadServiceMixin</code> for low-level network
+operations.
+</li>
+<li>
+It delegates file persistence to <code>LocalStorageService</code>.
+</li>
+<li>
+State is managed reactively, ensuring UI updates on progress changes.
+</li>
+</ul>
+</>
+}
+/>
+
+### API Design
+
+#### Core Interface
+
+```dart
+abstract class DownloadManager {
+  Future<void> download(String url);
+  Stream<double> get progress;
+}
+```
+
+#### Configuration
+
+The component uses sealed classes for configuration to ensure type safety and mutual exclusivity.
+
+```dart
+sealed class DownloadConfig {
+    const DownloadConfig();
+}
+
+class SimpleDownload extends DownloadConfig {
+    final String url;
+    final String filename;
+    const SimpleDownload({required this.url, required this.filename});
+}
+
+class SecureDownload extends DownloadConfig {
+    final String url;
+    final String filename;
+    final String authToken;
+    const SecureDownload({
+        required this.url,
+        required this.filename,
+        required this.authToken
+    });
+}
+```
+
+#### Service Injection
+
+We use `GetIt` for dependency injection, allowing you to swap the underlying http/dio client.
+
+```dart
+// Default internal service
+final downloadService = GetIt.I<DownloadServiceMixin>();
+
+// Usage in Component
+DownloadManager(
+    serviceProvider: (context) => CustomDownloadService(), // Optional override
+    config: SimpleDownload(url: '...', filename: 'video.mp4'),
+);
+```
+
+### Theming
+
+While primarily invisible, the UI representation (progress bars, buttons) follows the standard theme tokens.
+
+- **Progress Color**: `Theme.primary`
+- **Error Color**: `Theme.error`
+
+### Data Layer & State
+
+- **State Manager**: Internal `Bloc` manages `DownloadState` (Idle, Downloading, Paused, Completed, Error).
+- **Persistence**: Metadata (status, path) is stored in `Hive` or `SQLite` to persist state across app restarts.

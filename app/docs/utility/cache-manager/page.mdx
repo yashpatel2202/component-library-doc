@@ -1,0 +1,120 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+ 
+ # Cache Manager / Data Storage
+
+## 1. Requirements Document
+
+### Overview
+
+A centralized system to manage client-side persistence. It supports multiple storage backends (Memory, LocalStorage, SecureStorage) and provides unified APIs for caching APIs, images, and user preferences.
+
+### User Stories
+
+- **As a Developer**, I want to cache API responses to make the app work offline.
+- **As a Developer**, I want to store sensitive tokens securely.
+- **As a User**, I want my preferences (theme, language) to be remembered.
+
+### Functional Requirements
+
+1.  **Storage Engines**: support for In-Memory, Shared Preferences, and Secure Storage (Keychain/Keystore).
+2.  **Expiration Policies**: Time-to-Live (TTL) support for cached items.
+3.  **eviction**: LRU (Least Recently Used) eviction strategy for size-limited caches.
+4.  **Types**: Support for String, JSON, and primitive types.
+
+### Non-Functional Requirements
+
+- **Speed**: Sync reads for memory cache; async for disk.
+- **Security**: Encryption at rest for secure storage bucket.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [User Space]
+        direction TB
+        App[Application]:::service
+    end
+
+    subgraph Core [System Core]
+        direction TB
+        CM[Cache Manager]:::core
+    end
+
+    subgraph Engines [Storage Engines]
+        direction TB
+        Mem[Memory<br/>Store]:::storage
+        Disk[Disk<br/>Store]:::storage
+        Sec[Secure<br/>Store]:::storage
+    end
+
+    %% Connections
+    App -->|Get/Put| CM
+    CM -->|Fast| Mem
+    CM -->|Persist| Disk
+    CM -->|Encrypt| Sec`}
+
+description={
+
+<p>
+The <strong>CacheManager</strong> provides a unified interface over multiple storage backends.
+It intelligently routes data to <strong>Memory</strong> for speed, <strong>Disk</strong> for persistence,
+or <strong>Secure Storage</strong> for sensitive information.
+</p>
+}
+/>
+
+### API Design
+
+#### Cache Policy Configuration
+
+```dart
+enum EvictionPolicy {
+  lru, // Least Recently Used
+  fifo, // First In, First Out
+  none
+}
+
+class CacheConfig {
+    final Duration ttl;
+    final int maxEntries;
+    final EvictionPolicy eviction;
+
+    const CacheConfig({
+        this.ttl = const Duration(hours: 1),
+        this.maxEntries = 100,
+        this.eviction = EvictionPolicy.lru
+    });
+}
+```
+
+#### Usage Example
+
+```dart
+// Initialize
+final cache = CacheManager(
+    engine: DiskStorageEngine(),
+    config: CacheConfig(ttl: Duration(days: 7))
+);
+
+// Write
+await cache.put('user_profile', userJson);
+
+// Read
+final profile = await cache.get('user_profile');
+```
+
+### Internal Logic
+
+- **Memory Layer**: Uses a `LinkedHashMap` for O(1) access and inherent insertion ordering for LRU.
+- **Disk Layer**: Uses `Hive` boxes or shared_preferences for persistence.
+- **Locking**: Uses `Mutex` (mutual exclusion) to prevent race conditions during read/write on the same key.

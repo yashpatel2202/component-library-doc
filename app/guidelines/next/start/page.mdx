@@ -1,0 +1,242 @@
+<PageHeader
+  title="Let's Make Components"
+  description="Guidelines for component development process."
+ 
+/>
+
+## Steps for Component Creation Process
+
+Building a reusable Flutter component requires a structured approach so that developers can easily consume it, while internal business logic (BL) stays hidden and manageable.
+
+---
+
+### Step 1: Identify Pre-Requisites (Parameters and Properties)
+
+The very first step is to carefully think about what are the **pre-requisite parameters/properties** that will be required from the developer in order to handle all internal BL of the component.
+
+- This means, before writing the widget, we should first decide the bare minimum information that the developer must pass in order for the component to function correctly.
+- Based on these requirements, we should create the appropriate widgets, classes, mixins, and interfaces.
+- **Important rule:** Keep the required fields minimal. Do not make everything `required`.
+
+```dart
+class HierarchicalTree<T extends TreeNodeMixin<T>, L extends TreeLevelMixin<L>, S extends TreeServiceMixin<T, L>>
+   extends StatelessWidget {
+ final S Function(BuildContext context)? serviceProvider;
+ final HTConfig config;
+ final HTTapConfig<T>? tapConfig;
+ final HTUIConfig uiConfig;
+ final List<HTMeta> metas;
+
+ const HierarchicalTree({
+   super.key,
+   this.serviceProvider,
+   this.config = const HTConfig(),
+   this.tapConfig,
+   this.uiConfig = const DefaultHTUI(),
+   this.metas = const [],
+ });
+
+ @override
+ Widget build(BuildContext context) {
+   return Placeholder();
+ }
+}
+```
+
+In this example:
+
+- `serviceProvider` → Dependency injection point.
+- `config` → Main configuration object (with defaults).
+- `tapConfig` → Tap/interaction configuration.
+- `uiConfig` → Theme/layout configuration (default is `DefaultHTUI`).
+- `metas` → Extension metadata for extra use-cases.
+
+---
+
+### Step 2: List Down Configurable Aspects
+
+After defining the prerequisites, the next step is to list down **all the things that are configurable** in the component.
+
+Configurations generally fall into three categories:
+
+1. [**Theme Configurations**](/guidelines/component/theme)
+   - Example: Color palette, typography, spacing, padding, decorations, borders.
+   - These should be derived from the parent widget as inherited data via `BuildContext`.
+2. [**Layout Configurations**](/guidelines/component/layout)
+   - Example: Default layout, semi-custom layout, or fully custom builder pattern.
+   - The component should allow this flexibility without making the developer rewrite everything.
+3. [**BL (Business Logic) Configurations**](/guidelines/component/bl)
+   - Example: Pagination type, caching strategy, selection behavior, etc.
+   - All such options should have sensible defaults.
+   - Only the configurations that are absolutely necessary should be required.
+
+```dart
+sealed class HTUIConfig {
+  const HTUIConfig();
+}
+
+class DefaultHTUI extends HTUIConfig {
+  final HTBoxDecoration decoration;
+  const DefaultHTUI({this.decoration = const PlainDecoration()});
+}
+
+class SemiCustomHTUI extends HTUIConfig {
+  const SemiCustomHTUI(); // developer provides widget builder
+}
+
+class CustomHTUI extends HTUIConfig {
+  const CustomHTUI(); // developer provides full data-based build
+}
+```
+
+Here, theming/layout options are separated into **sealed configs**.
+
+### Step 3: Organize Configurables into Groups
+
+Do not put all configurable properties straight into a **single configuration class**. This will quickly become unmanageable.
+
+Instead:
+
+- **Create groups of configurables** and put them into separate classes.
+- Each group should represent a logical concern (e.g., TapConfig, UIConfig, BLConfig).
+- Use sealed classes to model mutually exclusive configurations.
+
+```dart
+sealed class HTTapConfig<T extends TreeNodeMixin<T>> {
+  const HTTapConfig();
+}
+
+class TapCallback<T extends TreeNodeMixin<T>> extends HTTapConfig<T> {
+  final void Function(T node) onTap;
+  const TapCallback({required this.onTap});
+}
+
+class TapSelection<T extends TreeNodeMixin<T>> extends HTTapConfig<T> {
+  final SelectionType type;
+  final void Function(List<T> nodes)? onChanged;
+  const TapSelection({required this.type, this.onChanged});
+}
+```
+
+Here:
+
+- `TapCallback` handles simple callbacks.
+- `TapSelection` handles selection logic with multiple strategies.
+
+---
+
+### Step 4: Avoid Conflicting Properties – Use Sealed Classes
+
+For one group of configurations, **never put down conflicting properties together**.
+
+For example:
+
+- If you are designing a Dropdown where a developer can configure **single select** or **multi select**, and in multi select, it is also configurable whether hierarchical elements are selectable, then do not write two conflicting properties like:
+
+Wrong way:
+
+```dart
+class DropdownConfig {
+  final bool isMultiSelect;
+  final bool allowHierarchySelectable;
+}
+```
+
+Correct way:
+
+Use a sealed class `Selection` with two implementations:
+
+```dart
+sealed class Selection {
+  const Selection();
+}
+
+class SingleSelect extends Selection {
+  const SingleSelect();
+}
+
+class MultiSelect extends Selection {
+  final bool hierarchySelectable;
+  const MultiSelect({this.hierarchySelectable = false});
+}
+```
+
+Now:
+
+- `SingleSelect` does not even expose `hierarchySelectable` because it makes no sense there.
+- `MultiSelect` can have its own extra property like `hierarchySelectable`.
+
+This approach prevents accidental misuse by developers and makes the BL clean.
+
+---
+
+### Step 5: Hide Internal State Managers
+
+Internal state managers like **Bloc/Cubit** should **never be exposed directly** to the developer.
+
+- The component should internally use its state manager.
+- The developer should only deal with configs, callbacks, and optional builders.
+
+```dart
+@override
+Widget build(BuildContext context) {
+  return BlocProvider(
+    create: (_) => HierarchicalTreeBloc<T, L, S>(
+      serviceProvider?.call(context) ?? GetIt.I<S>(),
+      config,
+      tapConfig,
+    )..add(const LoadRootNodes()),
+    child: _HierarchicalTreeView<T, L, S>(
+      metas: metas,
+      uiConfig: uiConfig,
+    ),
+  );
+}
+```
+
+Here, the Bloc is created and managed **inside** the widget. The developer has no idea about `HierarchicalTreeBloc`, and they should not need to know.
+
+---
+
+### Step 6: Use Enums for Configurations to Drive BL
+
+When a configuration is required to control **internal BL branching**, always prefer **enums** over booleans or arbitrary strings.
+
+This ensures:
+
+- Clear semantics.
+- Easy extension in the future.
+- Readable `switch-case` logic.
+
+```dart
+enum PaginationStrategy { pageNumber, offset, infiniteScroll }
+
+class BLConfig {
+  final PaginationStrategy pagination;
+  const BLConfig({this.pagination = PaginationStrategy.pageNumber});
+}
+```
+
+Internal BL can then be written cleanly:
+
+```dart
+switch (config.pagination) {
+  case PaginationStrategy.pageNumber:
+    // fetch data by page number
+    break;
+  case PaginationStrategy.offset:
+    // fetch data using offset
+    break;
+  case PaginationStrategy.infiniteScroll:
+    // attach listener to scroll
+    break;
+}
+```
+
+This makes the BL **scalable whenever required**.
+
+---
+
+## Now we are ready to move forward to make component library.
+
+## Let's Make Components.

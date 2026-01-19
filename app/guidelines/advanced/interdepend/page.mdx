@@ -1,0 +1,260 @@
+<PageHeader title="Interdependent Components" description="cross-scope accessibility where components are loosely coupled but still communicate via contracts." />
+
+In a real-world scenario, a child component (like **Photo**) may need features provided by a parent scope (like **DownloadManager**).\
+The parent manages heavy logic (caching, expiry, disk persistence, etc.) while the child just declares **intent** (e.g., "download this image and give me updates").
+
+<Tip>
+  If you haven't read [Scoped Components](/advanced/scope) yet, read [Scoped Components](/advanced/scope) first, before proceeding.
+</Tip>
+
+Key ideas:
+
+1. **Parent scope** is generic → accepts any child that can register with it.
+2. **Child’s BL** must work in two modes:
+   - If parent scope is available → delegate tasks to it.
+   - If parent scope is not available → fallback to own internal logic.
+3. **Parent exposes scoped builders** → children can listen to parent’s internal states without tight coupling.
+4. **Independent dashboards** → Parent can show analytics/monitoring across all registered children.
+
+## Example Scenario: Photo Preview with Caching
+
+A **Photo** component may need to:
+
+- Render an image from a URL.
+- Optionally **use caching** so images don’t get re-downloaded every time.
+- Support different download strategies: expiry, no-expiry, temporary, etc.
+
+Instead of embedding download logic directly inside the Photo widget, we delegate it to a **Download Manager Component**.
+
+## Concept
+
+- **DownloadManager**
+  - A standalone scope component responsible for managing file downloads, caching, and expiry policies.
+  - Provides a `DownloadBloc` to manage and expose state.
+  - Children can register themselves as “download tasks.”
+- **Photo** (Child Component)
+  - Acts as a _dependent component_.
+  - When inside a `DownloadManagerScope`, it **registers itself** and delegates work to the download manager.
+  - When no scope is found, it **falls back** to a direct `Image.network`.
+
+## Core Principles
+
+1. **Cross Accessibility**
+   - Scoped parent (Download Manager) accepts not only its “own children,” but also any generic child that knows how to talk to it via contracts (events, interfaces).
+2. **Dual Mode Operation**
+   - Child BL should work in both conditions:
+     - Parent scope **present** → delegate.
+     - Parent scope **absent** → fallback self-handling.
+3. **Dashboard Potential**
+   - Since children register in the parent, the parent can build its own dashboards (e.g., show how many images/audio/video files are cached).
+4. **Scoped Builders**
+   - Parent can expose builder components (e.g., `DownloadBuilder`) so children can **react to download progress/state** without having to know implementation details.
+
+## Example Implementation
+
+### Download Manager Bloc (Scoped Component)
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+/// ----- DOWNLOAD EVENTS -----
+sealed class DownloadEvent {}
+
+class RegisterDownload extends DownloadEvent {
+  final String id;
+  final String url;
+  RegisterDownload(this.id, this.url);
+}
+
+class StartDownload extends DownloadEvent {
+  final String id;
+  StartDownload(this.id);
+}
+
+class WithdrawDownload extends DownloadEvent {
+  final String id;
+  WithdrawDownload(this.id);
+}
+
+/// ----- DOWNLOAD STATE -----
+enum DownloadStatus { idle, downloading, completed, failed }
+
+class DownloadTask {
+  final String id;
+  final String url;
+  final DownloadStatus status;
+// add field here to story downloaded data - file-url/memory unit8list data
+
+  const DownloadTask(this.id, this.url, this.status);
+
+  DownloadTask copyWith({DownloadStatus? status}) =>
+      DownloadTask(id, url, status ?? this.status);
+}
+
+class DownloadState {
+  final Map<String, DownloadTask> tasks;
+  const DownloadState(this.tasks);
+}
+
+/// ----- DOWNLOAD BLOC -----
+class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
+  DownloadBloc() : super(const DownloadState({})) {
+    on<RegisterDownload>((event, emit) {
+      final newTask =
+          DownloadTask(event.id, event.url, DownloadStatus.idle);
+      emit(DownloadState({...state.tasks, event.id: newTask}));
+    });
+
+    on<StartDownload>((event, emit) async {
+      final task = state.tasks[event.id];
+      if (task == null) return;
+
+      emit(DownloadState({
+        ...state.tasks,
+        event.id: task.copyWith(status: DownloadStatus.downloading),
+      }));
+
+      // simulate delay for download
+      await Future.delayed(const Duration(seconds: 2));
+
+      emit(DownloadState({
+        ...state.tasks,
+        event.id: task.copyWith(status: DownloadStatus.completed,
+			// downloaded data can be populated here.
+		),
+      }));
+    });
+
+    on<WithdrawDownload>((event, emit) {
+      final updated = {...state.tasks}..remove(event.id);
+      emit(DownloadState(updated));
+    });
+  }
+}
+```
+
+### Parent: DownloadManagerScope
+
+```dart
+class DownloadManagerScope extends StatelessWidget {
+  final Widget child;
+
+  const DownloadManagerScope({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => DownloadBloc(),
+      child: child,
+    );
+  }
+}
+```
+
+### Child: Photo (with Fallback Mode)
+
+```dart
+class Photo extends StatelessWidget {
+  final String id;
+  final String url;
+
+  const Photo({super.key, required this.id, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final downloadBloc = BlocProvider.maybeOf<DownloadBloc>(context);
+
+    // CASE 1: DownloadManagerScope is not available
+    if (downloadBloc == null) {
+      return Card(
+        child: Column(
+          children: [
+            Image.network(url, height: 150, fit: BoxFit.cover),
+            const Text("Loaded without cache (no scope found)"),
+          ],
+        ),
+      );
+    }
+
+    // CASE 2: Scope is available → Register once
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      downloadBloc.add(RegisterDownload(id, url));
+    });
+
+    return Card(
+      child: Column(
+        children: [
+          DownloadBuilder(
+            id: id,
+            builder: (context, task) {
+              if (task == null) {
+                return const Text("Preparing...");
+              }
+
+              switch (task.status) {
+                case DownloadStatus.idle:
+                  return Column(
+                    children: [
+                      Image.network(url, height: 150, fit: BoxFit.cover),
+                      TextButton(
+                        onPressed: () =>
+                            downloadBloc.add(StartDownload(id)),
+                        child: const Text("Download"),
+                      ),
+                    ],
+                  );
+                case DownloadStatus.downloading:
+                  return const LinearProgressIndicator();
+                case DownloadStatus.completed:
+                  return Column(
+                    children: [
+						// here update your image rendering components accepts unit8list memory data provided by download manager.
+                      Image.network(url, height: 150, fit: BoxFit.cover),
+                      const Icon(Icons.check, color: Colors.green),
+                    ],
+                  );
+                case DownloadStatus.failed:
+                  return const Icon(Icons.error, color: Colors.red);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+### Usage Example
+
+```dart
+// With DownloadManagerScope (uses caching)
+DownloadManagerScope(
+  child: ListView(
+    children: const [
+      Photo(id: "1", url: "https://picsum.photos/200"),
+      Photo(id: "2", url: "https://picsum.photos/300"),
+    ],
+  ),
+);
+
+// Without scope (falls back to Image.network)
+ListView(
+  children: const [
+    Photo(id: "1", url: "https://picsum.photos/200"),
+    Photo(id: "2", url: "https://picsum.photos/300"),
+  ],
+);
+```
+
+## Summary
+
+- **Parent (Download Manager)** manages heavy BL (downloads, caching, expiry).
+- **Child (Photo)** stays **loosely coupled** and can survive without parent.
+
+<Check>
+  This fulfills the baseline:
+
+  **“Component can be used as a part, not just as a whole.”**
+</Check>

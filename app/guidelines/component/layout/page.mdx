@@ -1,0 +1,140 @@
+<PageHeader title="Layout" />
+
+## Key Responsibilities of Layout
+
+1. **Shape & Size** – Defines dimensions of the component.
+2. **Placement of Data \+ Elements** – Determines where child widgets and data-driven UI pieces appear.
+3. **State to UI Mapping** – Decides how internal state and data are reflected in the UI.
+
+---
+
+## Baseline Principles
+
+- Layouts should be **loosely coupled** with internal **Business Logic (BL)**.
+- Layout must be **customizable up to a certain level**, without rewriting internal logic.
+- Components should be **composable**, able to merge with other standalone widgets.
+- This flexibility is achieved via **multiple modes of customization**.
+
+---
+
+## Customization Levels
+
+### **1. Default Layout**
+
+If no customization is provided, the component renders its **default UI**.
+
+- Quick to use (zero-config).
+- Useful for most common cases.
+
+**Example:**
+
+```dart
+MyCard(
+  title: "Hello",
+  subtitle: "This is default layout",
+);
+```
+
+<Note>
+  Renders with **default card layout** as provided by the component library.
+</Note>
+
+---
+
+### **2. Semi-Customization**
+
+The component provides **pre-built UI parts** (like puzzle pieces).
+
+- Developer receives **ready-made widgets** and arranges them as desired.
+- Component still decides _how the pieces look_, developer decides _where they go_.
+
+**Example (using builder for semi-customization):**
+
+```dart
+MyCard.semiCustom(
+  title: "Semi Custom",
+  subtitle: "Arranged differently",
+  layoutBuilder: (context, parts) {
+    // parts contains: header, body, footer widgets
+    return Column(
+      children: [
+        parts.header,       // Provided by component
+        Row(
+          children: [
+            Expanded(child: parts.body),
+            parts.footer,
+          ],
+        ),
+      ],
+    );
+  },
+);
+```
+
+<Note>
+  Here, `header`, `body`, and `footer` are **pre-rendered widgets** created by the component. Developer only decides the placement.
+</Note>
+
+---
+
+### **3. Full Customization**
+
+The component provides **raw data**, not widgets.
+
+- Developer decides how to build UI from data.
+- Component still manages **state \+ business logic**, but UI is 100% developer-driven.
+
+**Example (using full customization builder):**
+
+```dart
+MyCard.fullCustom(
+  dataBuilder: (context, data) {
+    // 'data' contains processed BL state, e.g. title, subtitle, actions
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(data.title, style: Theme.of(context).textTheme.headline6),
+          Text(data.subtitle, style: Theme.of(context).textTheme.bodyText2),
+          Row(
+            children: data.actions.map((action) {
+              return ElevatedButton(
+                onPressed: action.onTap,
+                child: Text(action.label),
+              );
+            }).toList(),
+          )
+        ],
+      ),
+    );
+  },
+);
+```
+
+<Note>
+  Here, `data` could be a `CardDataModel` prepared internally by the component’s BL. The developer controls **how it’s rendered**.
+</Note>
+
+---
+
+## State Management in Customization (part of BL)
+
+- **State is always managed by the component itself**, even when layout is fully customized.
+- Component decides **when to rebuild the builder functions**, ensuring consistency.
+
+### **Semi-Custom Layout**
+
+- State is managed internally (via `Bloc` / `Cubit` ).
+- Builder is invoked whenever relevant UI “puzzle pieces” need re-rendering.
+- Example: Refresh header when title changes, but not the body.
+
+### **Full-Custom Layout**
+
+- State still comes from internal BL (e.g., data from API, form values).
+- Builder is called with **processed state/data** so developer can fully decide how to display it.
+- Example: Entire card UI is rebuilt when data model changes.
+
+<Tip>
+  Customization in layout also opens the door for [Interdependent Components](/advanced/interdepend).
+</Tip>
