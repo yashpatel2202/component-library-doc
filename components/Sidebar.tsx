@@ -30,7 +30,8 @@ import {
   Globe,
   Package,
   Link as LinkIcon,
-  LayoutTemplate
+  LayoutTemplate,
+  Lock
 } from "lucide-react";
 
 type DocStatus = 'done' | 'in-progress' | 'waiting';
@@ -72,6 +73,7 @@ const navCategories: Category[] = [
     icon: Package,
     items: [
       { name: "API Integration", href: "/docs/wrappers/api-integration", icon: LinkIcon, status: 'waiting' },
+      { name: "Auth Component", href: "/docs/wrappers/auth-component", icon: Lock, status: 'waiting' },
       { name: "Data Layer", href: "/docs/wrappers/data-layer", icon: Database, status: 'waiting' },
       { name: "UI & State", href: "/docs/wrappers/ui-state", icon: LayoutTemplate, status: 'waiting' },
     ]

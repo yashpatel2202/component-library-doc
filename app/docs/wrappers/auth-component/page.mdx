@@ -1,0 +1,145 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Auth Component
+
+## 1. Requirements Document
+
+### Overview
+
+A comprehensive authentication wrapper that handles multiple authentication strategies (OAuth2.0, SSO, email/password) while abstracting away complexity like token storage, refresh token rotation, and request retries.
+
+### User Stories
+
+- **As a Developer**, I want to easily switch between authentication providers (e.g. Google, Apple, Email) with a unified API.
+- **As a Developer**, I want the app to automatically refresh expired access tokens without user intervention.
+- **As a Developer**, I want failed requests due to token expiration to automatically retry after a successful refresh.
+- **As a User**, I want my session to persist securely across app restarts.
+
+### Functional Requirements
+
+1.  **Multiple Auth Strategies**: Support for `OAuth2` (via webview/native), `SSO` (SAML/OIDC), and `Credential` (username/pass) flows.
+2.  **Token Management**: Securely store Access & Refresh tokens using platform-specific secure storage (Keychain/Keystore).
+3.  **Auto-Refresh**: Intercept 401 errors, lock the request queue, refresh the token, and retry pending requests.
+4.  **Session State**: Provide a reactive stream/provider for the current user's authentication state (`authenticated`, `guest`, `loading`).
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef app fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef auth fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef infra fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph App [Application Layer]
+        direction TB
+        UI[Login Screen]:::app
+        Guards[Route Guards]:::app
+    end
+
+    subgraph Auth [Auth Wrapper]
+        direction TB
+        Manager[AuthManager]:::auth
+        Queue[Request Queue]:::auth
+    end
+
+    subgraph Infra [Infrastructure]
+        direction TB
+        Storage[Secure Storage]:::infra
+        Client[HTTP Client]:::infra
+        Provider[Identity Provider]:::infra
+    end
+
+    %% Connections
+    UI -->|Login/Logout| Manager
+    Guards -->|Check State| Manager
+    Manager -->|Save Tokens| Storage
+    Manager -->|Intercept 401| Client
+    Client -->|Auth Request| Provider
+    Manager -->|Retry| Queue`}
+
+description={
+
+<>
+<p>
+The <strong>AuthManager</strong> acts as the central coordinator. It holds the current user state, manages the interaction
+with the Secure Storage for persistence, and injects itself into the HTTP Client to handle request interception
+for token refreshes.
+</p>
+</>
+}
+/>
+
+### API Design
+
+#### AuthManager Usage
+
+```dart
+// Initialize the AuthManager with your config
+final authConfig = AuthConfig(
+  baseUrl: 'https://api.example.com',
+  loginEndpoint: '/auth/login',
+  refreshEndpoint: '/auth/refresh',
+  clientId: 'your-client-id',
+);
+
+final authManager = AuthManager(
+  storage: SecureTokenStorage(),
+  client: DioClient(), // or http.Client
+  config: authConfig,
+);
+
+// Login with Password
+await authManager.login(
+  AuthType.password,
+  payload: {'email': 'user@example.com', 'password': '...'}
+);
+
+// Login with OAuth (triggers native/webview flow)
+await authManager.login(AuthType.google);
+
+// Listen to auth state changes
+authManager.authState.listen((state) {
+  if (state == AuthState.authenticated) {
+    router.go('/home');
+  } else {
+    router.go('/login');
+  }
+});
+```
+
+#### Token Refresh Interceptor
+
+The library includes an interceptor that automatically handles 401s:
+
+```dart
+class AuthInterceptor extends Interceptor {
+  final AuthManager manager;
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    if (err.response?.statusCode == 401) {
+      // 1. Lock queue
+      // 2. Refresh token
+      final newToken = await manager.refreshToken();
+
+      // 3. Retry original request with new token
+      final opts = err.requestOptions;
+      opts.headers['Authorization'] = 'Bearer $newToken';
+      final response = await dio.fetch(opts);
+
+      handler.resolve(response);
+    } else {
+      handler.next(err);
+    }
+  }
+}
+```
