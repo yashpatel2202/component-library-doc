@@ -83,7 +83,7 @@ export function GuidelinesSidebar() {
         </div>
         <div>
            <Link href="/" className="font-bold text-lg block text-slate-900 dark:text-white tracking-tight leading-none group hover:text-blue-600 transition-colors">
-            Flutter Lib
+            Flutter Library
           </Link>
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Basic Guidelines</p>
         </div>
