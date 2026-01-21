@@ -1,0 +1,142 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Selection Controls
+
+## 1. Requirements Document
+
+### Overview
+
+A set of input mechanisms for choosing options, ranging from boolean toggles to complex list selections. This includes **Checkboxes**, **Radio Buttons**, **Toggle Switches**, and **Dropdown Menus**.
+
+### User Stories
+
+- **As a User**, I want to see a clear difference between "On" and "Off" states.
+- **As a User**, I want to select multiple options from a small set (Checkboxes) or a long list (Multi-Select Dropdown).
+- **As a User**, I want to select exactly one option from a group (Radios) or a compact menu (Dropdown).
+
+### Functional Requirements
+
+1.  **Checkbox**:
+    - **Tri-state**: Checked, Unchecked, Indeterminate (for "Select All" logic).
+    - **Label Placement**: Left or Right.
+2.  **Radio Button**:
+    - Group management: Deselects others in the same group when selected.
+3.  **Toggle Switch**:
+    - Instant action representation (e.g., turning on settings).
+    - Loading state support (async toggle).
+4.  **Dropdown / Select**:
+    - **Single Selection**: Compact list for picking one value.
+    - **Multi-Selection**: Selection with tags/chips presentation.
+    - **Search**: Filter options within the dropdown for large datasets.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Context
+        direction TB
+        Form[Form<br/>Container]:::service
+    end
+
+    subgraph Core
+        direction TB
+        Base[Selectable<br/>Input]:::core
+    end
+
+    subgraph Widgets
+        direction TB
+        Check[Check<br/>Box]:::storage
+        Radio[Radio<br/>Group]:::storage
+        Switch[Toggle<br/>Switch]:::storage
+        Drop[Dropdown<br/>Menu]:::storage
+    end
+
+    %% Connections
+    Form -->|Register| Base
+    Base -->|Inherit| Check
+    Base -->|Inherit| Radio
+    Base -->|Inherit| Switch
+    Base -->|Inherit| Drop
+    Drop -.->|Overlay| Pick[Option<br/>Picker]`}
+
+description={
+
+<>
+<p>
+Selection controls inherit from a specialized <strong>SelectableInput</strong> model which handles
+values (bool or List of values). Dropdowns leverage the <strong>Overlay</strong> system to display
+options above other content, ensuring z-index correctness.
+</p>
+</>
+}
+/>
+
+### API Design
+
+#### Dropdown Configuration
+
+```dart
+class DropdownConfig<T> {
+    final List<DropdownItem<T>> items;
+    final bool enableSearch;
+    final bool isMultiSelect;
+    final String label;
+
+    const DropdownConfig({
+        required this.items,
+        required this.label,
+        this.enableSearch = false,
+        this.isMultiSelect = false,
+    });
+}
+```
+
+#### Usage
+
+```dart
+// Single Select
+MyDropdown<String>(
+    config: DropdownConfig(
+        label: "Choose Role",
+        items: [
+            DropdownItem(value: "admin", label: "Admin"),
+            DropdownItem(value: "user", label: "User"),
+        ]
+    ),
+    onChanged: (val) => print(val),
+);
+
+// Multi Select
+MyDropdown<int>(
+    config: DropdownConfig(
+        label: "Select Tags",
+        isMultiSelect: true,
+        items: tags,
+    ),
+    onChanged: (values) => print(values), // List<int>
+);
+```
+
+### Theming
+
+Styling is handled via specialized component themes:
+
+- **CheckboxTheme**: `fillColor`, `checkColor`, `shape` (rounded rect).
+- **SwitchTheme**: `trackColor`, `thumbColor`.
+- **DropdownTheme**: `menuStyle`, `inputDecorationTheme`.
+- **Colors**:
+  - Active: `primary`
+  - Inactive: `onSurface.opacity(0.6)`

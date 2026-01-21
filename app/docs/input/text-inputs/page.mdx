@@ -1,0 +1,128 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Text Inputs
+
+## 1. Requirements Document
+
+### Overview
+
+Standardized text entry components ensuring consistent styling, validation, and interaction states across the application. This includes single-line inputs, multi-line text areas, and password fields.
+
+### User Stories
+
+- **As a User**, I want to see a clear label and placeholder so I know what to type.
+- **As a User**, I want instant feedback when I enter an invalid email format.
+- **As a Developer**, I want to toggle password visibility without writing extra state logic.
+
+### Functional Requirements
+
+1.  **Variants**:
+    - **Outline**: Default style with a border.
+    - **Filled**: Background color focus.
+    - **Underline**: Minimalist style.
+2.  **Features**:
+    - Obscure text (Password mode) with toggle icon.
+    - Prefix/Suffix icons (e.g., Search icon or Currency symbol).
+    - Helper text and Error text support.
+    - Character counter.
+3.  **Validation**:
+    - Regex-based patterns (Email, Phone).
+    - Required field checks.
+    - Custom validator functions.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Context
+        direction TB
+        Form[Form<br/>Container]:::service
+    end
+
+    subgraph Core
+        direction TB
+        Base[Base<br/>Input]:::core
+    end
+
+    subgraph Component
+        direction TB
+        TextField[Text<br/>Field]:::storage
+        Decorator[Input<br/>Decorator]:::storage
+    end
+
+    %% Connections
+    Form -->|Register| Base
+    Base -->|Inherit| TextField
+    TextField -->|Wrap| Decorator`}
+
+description={
+
+<>
+<p>
+The <strong>TextField</strong> extends the <code>BaseInput</code> class to integrate with the form system.
+It utilizes Flutter's <code>InputDecorator</code> to handle labels, errors, and icons consistently.
+</p>
+</>
+}
+/>
+
+### API Design
+
+#### Configuration
+
+```dart
+class TextInputConfig {
+    final String label;
+    final String? placeholder;
+    final String? initialValue;
+    final List<Validator> validators;
+    final InputType type; // text, number, email, password
+    final Widget? prefixIcon;
+    final Widget? suffixIcon;
+
+    const TextInputConfig({
+        required this.label,
+        this.type = InputType.text,
+        this.validators = const [],
+        this.prefixIcon,
+        // ...
+    });
+}
+```
+
+#### Usage
+
+```dart
+MyTextField(
+    config: TextInputConfig(
+        label: "Email Address",
+        type: InputType.email,
+        prefixIcon: Icon(Icons.email),
+        validators: [Validators.required, Validators.email],
+    ),
+    onChanged: (val) => print("Input: $val"),
+)
+```
+
+### Theming
+
+Text Inputs rely heavily on `InputDecorationTheme` in `ThemeData`:
+
+- **Border**: `OutlineInputBorder` with `borderRadius` tokens.
+- **Colors**:
+  - Focused Border: `primary`
+  - Error Border: `error`
+  - Fill Color: `surfaceVariant` (for filled variant).

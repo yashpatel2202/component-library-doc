@@ -1,0 +1,111 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Data Layer Component
+
+## 1. Requirements Document
+
+### Overview
+
+A comprehensive wrapper for managing local data persistence and synchronization. It unifies different local storage engines (SQLite, Hive, SharedPrefs) under a standard repository pattern, supporting reactive updates and offline-first capabilities.
+
+### User Stories
+
+- **As a Developer**, I want to save an object and have it automatically update in the UI.
+- **As a Developer**, I want to cache API results seamlessly and expire them after a set time.
+- **As a Developer**, I want to switch from Hive to SQLite for complex queries without changing the UI code.
+
+### Functional Requirements
+
+1.  **Unified Storage**: A generic interface (`LocalSource<T>`) for CRUD operations.
+2.  **Reactive Streams**: Watch data changes (listen to db updates) directly from the storage layer.
+3.  **Caching Strategy**: Policies for Write-Through, Read-Through, and Stale-While-Revalidate.
+4.  **Type Safety**: enforced strict typing for stored objects.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef wrapper fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph App [Business Logic]
+        direction TB
+        Bloc[Feature<br/>Bloc]:::wrapper
+    end
+
+    subgraph Wrapper [Data Wrapper]
+        direction TB
+        Repo[Data<br/>Repository]:::core
+        Cache[Cache<br/>Strategy]:::core
+    end
+
+    subgraph Engine [Storage Engines]
+        direction TB
+        Hive[Hive<br/>Box]:::storage
+        Sql[SQLite<br/>Db]:::storage
+    end
+
+    %% Connections
+    Bloc -->|Watch| Repo
+    Repo -->|Read/Write| Cache
+    Cache -->|Persist| Hive
+    Cache -->|Query| Sql`}
+
+description={
+
+<>
+<p>
+The <strong>Data Layer Component</strong> acts as the single source of truth for the application's state. 
+By wrapping specific storage implementations, it allows the rest of the app to be agnostic about 
+where data originates (Network vs Disk) or how it is stored.
+</p>
+</>
+}
+/>
+
+### API Design
+
+#### Storage Interface
+
+```dart
+abstract class LocalSource<T> {
+  Future<void> put(String key, T item);
+  Future<T?> get(String key);
+  Stream<T?> watch(String key);
+  Future<void> delete(String key);
+}
+```
+
+#### Repository Implementation
+
+```dart
+class ProductRepository {
+  final LocalSource<Product> _local;
+  final ApiSource _remote;
+
+  Stream<Product> getProduct(String id) async* {
+    // 1. Emit local data first (fast)
+    final local = await _local.get(id);
+    if (local != null) yield local;
+
+    // 2. Fetch fresh data
+    try {
+      final remote = await _remote.fetch(id);
+      await _local.put(id, remote); // Update cache
+      yield remote;
+    } catch (_) {
+      // Handle offline case
+    }
+  }
+}
+```

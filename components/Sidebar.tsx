@@ -23,7 +23,14 @@ import {
   FileText,
   Play,
   BookOpen,
-  CreditCard
+  CreditCard,
+  ToggleLeft,
+  Cpu,
+  Wrench,
+  Globe,
+  Package,
+  Link as LinkIcon,
+  LayoutTemplate
 } from "lucide-react";
 
 type DocStatus = 'done' | 'in-progress' | 'waiting';
@@ -43,20 +50,38 @@ type Category = {
 
 const navCategories: Category[] = [
   {
+    title: "Core Library",
+    icon: Cpu,
+    items: [
+      { name: "Utils & Results", href: "/docs/core/utils", icon: Wrench, status: 'in-progress' },
+      { name: "HTTP Client", href: "/docs/core/http", icon: Globe, status: 'waiting' },
+    ]
+  },
+  {
     title: "Utility Components",
     icon: Box,
     items: [
-      { name: "Cache Manager", href: "/docs/utility/cache-manager", icon: Database, status: 'in-progress' },
+      { name: "Cache Manager", href: "/docs/utility/cache-manager", icon: Database, status: 'waiting' },
       { name: "Download Manager", href: "/docs/utility/download-manager", icon: Download, status: 'waiting' },
       { name: "Notification Manager", href: "/docs/utility/notification-manager", icon: Bell, status: 'waiting' },
       { name: "Payment Manager", href: "/docs/utility/payment-manager", icon: CreditCard, status: 'waiting' },
     ]
   },
   {
+    title: "Packed Utility Wrappers",
+    icon: Package,
+    items: [
+      { name: "API Integration", href: "/docs/wrappers/api-integration", icon: LinkIcon, status: 'waiting' },
+      { name: "Data Layer", href: "/docs/wrappers/data-layer", icon: Database, status: 'waiting' },
+      { name: "UI & State", href: "/docs/wrappers/ui-state", icon: LayoutTemplate, status: 'waiting' },
+    ]
+  },
+  {
     title: "Input Components",
     icon: Keyboard,
     items: [
-      { name: "Basic Inputs", href: "/docs/input/basic-inputs", icon: Type, status: 'waiting' },
+      { name: "Text Inputs", href: "/docs/input/text-inputs", icon: Type, status: 'waiting' },
+      { name: "Selection Controls", href: "/docs/input/selection-controls", icon: ToggleLeft, status: 'waiting' },
       { name: "Advanced Pickers", href: "/docs/input/advanced-pickers", icon: Calendar, status: 'waiting' },
       { name: "Specialized Inputs", href: "/docs/input/specialized-inputs", icon: ScanLine, status: 'waiting' },
     ]

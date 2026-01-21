@@ -1,0 +1,111 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="in-progress" />
+
+# Utils, Results & Converters
+
+## 1. Requirements Document
+
+### Overview
+
+A foundational set of utility classes and functions that standardizes error handling (Result Pattern), data conversion, and common functional operations across the entire application.
+
+### User Stories
+
+- **As a Developer**, I want a consistent way to return success or failure from functions without throwing exceptions.
+- **As a Developer**, I want reusable converters for common data types (Date, Currency, JSON).
+- **As a Developer**, I want a robust set of extension methods to reduce boilerplate code.
+
+### Functional Requirements
+
+1.  **Result Pattern**:
+    - `Result<T>`: A sealed class representing Success or Failure.
+    - `Unit`: A type representing void/empty return.
+2.  **Converters**:
+    - JSON Converter mixins.
+    - DateTime formatting utilities.
+    - Currency and Number formatting.
+3.  **Extensions**:
+    - String manipulation (e.g., capitalization, masking).
+    - Collection utilities (e.g., safe access, unique filters).
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph App [Application Logic]
+        direction TB
+        Feature[Feature<br/>Bloc]:::service
+    end
+
+    subgraph Core [Core Library]
+        direction TB
+        Res[Result<T>]:::core
+        Conv[Converters]:::core
+        Ext[Extensions]:::core
+    end
+
+    %% Connections
+    Feature -->|Return| Res
+    Feature -->|Use| Conv
+    Feature -.->|Import| Ext`}
+
+description={
+
+<>
+<p>
+The <strong>Core Utilities</strong> module provides the primitives that the rest of the application builds upon. 
+The <strong>Result Pattern</strong> is strictly enforced at domain boundaries to ensure all errors are handled explicitly.
+</p>
+</>
+}
+/>
+
+### API Design
+
+#### Result Pattern
+
+```dart
+sealed class Result<T> {
+  const Result();
+}
+
+class Success<T> extends Result<T> {
+  final T data;
+  const Success(this.data);
+}
+
+class Failure<T> extends Result<T> {
+  final Exception error;
+  const Failure(this.error);
+}
+
+// Usage
+Result<User> getUser() {
+  try {
+    return Success(User());
+  } catch (e) {
+    return Failure(e);
+  }
+}
+```
+
+#### Converters
+
+```dart
+abstract class JsonConverter<T> {
+  T fromJson(Map<String, dynamic> json);
+  Map<String, dynamic> toJson(T object);
+}
+```

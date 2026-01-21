@@ -1,0 +1,120 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# HTTP Client & Interceptors
+
+## 1. Requirements Document
+
+### Overview
+
+A comprehensive networking layer that abstracts the underlying HTTP client (Dio/Http), provides centralized interceptors for authentication and logging, and enforces a strict contract for all API interactions.
+
+### User Stories
+
+- **As a Developer**, I want to attach an Auth Token to every request automatically.
+- **As a Developer**, I want to log all network traffic in debug mode for easier troubleshooting.
+- **As a Developer**, I want to swap the HTTP client implementation without breaking feature code.
+
+### Functional Requirements
+
+1.  **Client Abstraction**:
+    - Unified interface (`IHttpClient`) supporting GET, POST, PUT, DELETE, PATCH.
+2.  **Interceptors**:
+    - **AuthInterceptor**: Injects `Authorization: Bearer <token>`.
+    - **RetryInterceptor**: Retries failed requests with exponential backoff.
+    - **LoggerInterceptor**: Pretty prints request/response details.
+3.  **Error Handling**:
+    - Standardized `NetworkException` mapping (401 -> Unauthorized, 500 -> ServerError).
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef service fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [Data Source]
+        direction TB
+        Repo[Repository]:::service
+    end
+
+    subgraph Core [Network Layer]
+        direction TB
+        Interface[IHttp<br/>Client]:::core
+        Impl[Dio<br/>Wrapper]:::storage
+        Inter[Interceptors]:::storage
+    end
+
+    subgraph External [World]
+        direction TB
+        API[REST<br/>API]:::service
+    end
+
+    %% Connections
+    Repo -->|Request| Interface
+    Interface -.->|Delegate| Impl
+    Impl -->|Process| Inter
+    Inter -->|Send| API`}
+
+description={
+
+<>
+<p>
+The <strong>HTTP Module</strong> uses the <strong>Interceptor Pattern</strong> to handle cross-cutting concerns
+like Authentication and Logging independently of the business logic. The `IHttpClient` interface ensures
+easy mocking for unit testing.
+</p>
+</>
+}
+/>
+
+### API Design
+
+#### Client Interface
+
+```dart
+abstract class IHttpClient {
+  Future<Result<T>> get<T>(String path, {Map<String, dynamic>? query});
+  Future<Result<T>> post<T>(String path, {dynamic data});
+  // ...
+}
+```
+
+#### Interceptor Setup
+
+```dart
+class AuthInterceptor implements Interceptor {
+  final TokenStorage storage;
+
+  @override
+  void onRequest(RequestOptions options) {
+    final token = storage.getToken();
+    if (token != null) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+  }
+}
+```
+
+#### Usage
+
+```dart
+final client = HttpClient(
+    baseUrl: 'https://api.example.com',
+    interceptors: [
+        AuthInterceptor(),
+        LoggerInterceptor(),
+    ]
+);
+
+final result = await client.get('/users/1');
+```

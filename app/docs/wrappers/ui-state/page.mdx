@@ -1,0 +1,126 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# UI & State Management Component
+
+## 1. Requirements Document
+
+### Overview
+
+A set of wrappers and base classes for building consistent, reactive user interfaces. It standardizes how state is exposed to views, how side-effects (navigation, dialogs) are handled, and how common UI patterns (loading, error states) are rendered.
+
+### User Stories
+
+- **As a Developer**, I want a standard `BasePage` that handles tracking and safe-area insets automatically.
+- **As a Developer**, I want to emit a "Show Snackbar" event from my Bloc without passing context around.
+- **As a Developer**, I want a uniform way to handle loading spinners and empty states across all screens.
+
+### Functional Requirements
+
+1.  **Base View Model**: Abstract logic for screen lifecycle (`onInit`, `onDispose`).
+2.  **View Wrapper**: `BaseView<T>` widget that auto-injects the dedicated ViewModel/Bloc.
+3.  **State Handling**:
+    - Standardized states: `Initial`, `Loading`, `Success<T>`, `Error`.
+    - Event bus for one-off actions (Navigation, Toasts).
+4.  **UI Templates**:
+    - `LoadingOverlay`: Blocks interaction during async ops.
+    - `ErrorWidget`: Retry button and illustration standards.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef wrapper fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef storage fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph OS [Flutter Framework]
+        direction TB
+        Widget[Widget<br/>Tree]:::storage
+    end
+
+    subgraph Wrapper [UI Kit]
+        direction TB
+        Base[Base<br/>View]:::core
+        Mixin[State<br/>Mixin]:::core
+    end
+
+    subgraph Logic [State Mgmt]
+        direction TB
+        Bloc[View<br/>Model]:::wrapper
+    end
+
+    %% Connections
+    Widget -->|Build| Base
+    Base -->|Bind| Bloc
+    Bloc -->|Emit State| Base
+    Bloc -.->|Signal| Mixin
+    Mixin -->|Show| Widget`}
+
+description={
+
+<>
+<p>
+The <strong>UI & State Wrapper</strong> enforces a clean implementation of the MVVM/Bloc pattern. 
+The <code>BaseView</code> widget acts as the glue code, ensuring that every screen has a configured 
+ViewModel and can react to standard state changes without boilerplate `StreamBuilder` code.
+</p>
+</>
+}
+/>
+
+### API Design
+
+#### Base View Usage
+
+```dart
+class ProfilePage extends BaseView<ProfileController> {
+  const ProfilePage({super.key});
+
+  @override
+  Widget buildBody(BuildContext context, ProfileController controller) {
+    return controller.obx(
+      // Success State
+      (state) => Text(state!.username),
+
+      // Loading State (Wrapped automatically, but optionally overridden)
+      onLoading: const CustomSpinner(),
+
+      // Error State
+      onError: (err) => RetryWidget(onRetry: controller.refresh),
+    );
+  }
+}
+```
+
+#### Base Controller
+
+```dart
+class ProfileController extends BaseController with StateMixin<User> {
+  final UserApi _api;
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchProfile();
+  }
+
+  void fetchProfile() async {
+    change(null, status: RxStatus.loading());
+    final result = await _api.getUser();
+
+    result.fold(
+      (user) => change(user, status: RxStatus.success()),
+      (err) => change(null, status: RxStatus.error(err.toString())),
+    );
+  }
+}
+```

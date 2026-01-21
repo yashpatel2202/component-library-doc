@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
-import { Box, Keyboard, Film, Layers, ArrowRight } from 'lucide-react';
+import { Box, Keyboard, Film, Layers, ArrowRight, Cpu, Package } from 'lucide-react';
 
 function FeatureCard({ href, title, description, icon: Icon, bgClass, iconClass }: any) {
   return (
@@ -79,7 +79,7 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link 
-              href="/docs/utility/download-manager"
+              href="/docs/core/utils"
               className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
             >
               Get Started <ArrowRight className="w-4 h-4" />
@@ -96,25 +96,41 @@ export default function Home() {
 
       {/* Features Grid */}
       <div className="max-w-6xl mx-auto px-6 pb-32">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <FeatureCard
-            href="/docs/utility/download-manager"
+            href="/docs/core/utils"
+            title="Core Library"
+            description="Foundational utilities, result patterns, and robust HTTP networking."
+            icon={Cpu}
+            bgClass="bg-blue-900/30"
+            iconClass="text-blue-400"
+          />
+          <FeatureCard
+            href="/docs/utility/cache-manager"
             title="Utility"
-            description="Essential background tools for file management, caching, notifications, and payments."
+            description="Essential background tools for file storage, caching, and payments."
             icon={Box}
             bgClass="bg-emerald-900/30"
             iconClass="text-emerald-400"
           />
           <FeatureCard
-            href="/docs/input/basic-inputs"
+            href="/docs/wrappers/api-integration"
+            title="Packed Wrappers"
+            description="Standardized integration layers for API, Data, and State management."
+            icon={Package}
+            bgClass="bg-indigo-900/30"
+            iconClass="text-indigo-400"
+          />
+          <FeatureCard
+            href="/docs/input/text-inputs"
             title="Inputs"
-            description="Robust form fields, pickers, and scanners with built-in validation."
+            description="Robust text fields, selection controls, pickers, and scanners."
             icon={Keyboard}
             bgClass="bg-purple-900/30"
             iconClass="text-purple-400"
           />
           <FeatureCard
-            href="/docs/media/media-handling"
+            href="/docs/media/audio"
             title="Media"
             description="Optimized viewers and players for images, video, and audio content."
             icon={Film}
