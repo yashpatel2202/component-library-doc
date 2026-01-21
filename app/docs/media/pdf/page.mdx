@@ -1,4 +1,7 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
 
 # PDF Viewer
 
@@ -56,6 +59,7 @@ A high-performance PDF renderer that can handle large documents with features li
     View -->|Search| Doc`}
 
 description={
+
 <p>
 The <strong>PDF Document</strong> engine manages the connection to the native renderer (PDFium on Android,
 PDFKit on iOS). It employs <strong>Lazy Loading</strong> strategies to only render the pages currently

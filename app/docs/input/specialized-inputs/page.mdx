@@ -1,4 +1,7 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
 
 # Specialized Inputs
 
@@ -64,6 +67,7 @@ Hardware-integrated input components for capturing data from the physical world,
     Ctrl -->|Toggle| Flash`}
 
 description={
+
 <p>
 Specialized inputs require deep hardware integration. The <strong>Camera Controller</strong> establishes
 the data stream, while the <strong>Decoder Engine</strong> processes frames in a background isolate

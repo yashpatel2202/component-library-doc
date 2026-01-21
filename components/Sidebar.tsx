@@ -22,13 +22,17 @@ import {
   Headphones,
   FileText,
   Play,
-  BookOpen
+  BookOpen,
+  CreditCard
 } from "lucide-react";
+
+type DocStatus = 'done' | 'in-progress' | 'waiting';
 
 type NavItem = {
   name: string;
   href: string;
   icon: LucideIcon;
+  status?: DocStatus;
 };
 
 type Category = {
@@ -42,18 +46,19 @@ const navCategories: Category[] = [
     title: "Utility Components",
     icon: Box,
     items: [
-      { name: "Download Manager", href: "/docs/utility/download-manager", icon: Download },
-      { name: "Cache Manager", href: "/docs/utility/cache-manager", icon: Database },
-      { name: "Notification Manager", href: "/docs/utility/notification-manager", icon: Bell },
+      { name: "Cache Manager", href: "/docs/utility/cache-manager", icon: Database, status: 'in-progress' },
+      { name: "Download Manager", href: "/docs/utility/download-manager", icon: Download, status: 'waiting' },
+      { name: "Notification Manager", href: "/docs/utility/notification-manager", icon: Bell, status: 'waiting' },
+      { name: "Payment Manager", href: "/docs/utility/payment-manager", icon: CreditCard, status: 'waiting' },
     ]
   },
   {
     title: "Input Components",
     icon: Keyboard,
     items: [
-      { name: "Basic Inputs", href: "/docs/input/basic-inputs", icon: Type },
-      { name: "Advanced Pickers", href: "/docs/input/advanced-pickers", icon: Calendar },
-      { name: "Specialized Inputs", href: "/docs/input/specialized-inputs", icon: ScanLine },
+      { name: "Basic Inputs", href: "/docs/input/basic-inputs", icon: Type, status: 'waiting' },
+      { name: "Advanced Pickers", href: "/docs/input/advanced-pickers", icon: Calendar, status: 'waiting' },
+      { name: "Specialized Inputs", href: "/docs/input/specialized-inputs", icon: ScanLine, status: 'waiting' },
     ]
   },
   {
@@ -61,19 +66,19 @@ const navCategories: Category[] = [
     icon: Film,
     items: [
 
-      { name: "Audio Player", href: "/docs/media/audio", icon: Headphones },
-      { name: "Video Player", href: "/docs/media/video", icon: Play },
-      { name: "Image Component", href: "/docs/media/image", icon: ImageIcon },
-      { name: "PDF Viewer", href: "/docs/media/pdf", icon: FileText },
+      { name: "Audio Player", href: "/docs/media/audio", icon: Headphones, status: 'waiting' },
+      { name: "Video Player", href: "/docs/media/video", icon: Play, status: 'waiting' },
+      { name: "Image Component", href: "/docs/media/image", icon: ImageIcon, status: 'waiting' },
+      { name: "PDF Viewer", href: "/docs/media/pdf", icon: FileText, status: 'waiting' },
     ]
   },
   {
     title: "High-Level Components",
     icon: Layers,
     items: [
-      { name: "CMS Pages", href: "/docs/high-level/cms-pages", icon: Layout },
-      { name: "Filters", href: "/docs/high-level/filters", icon: Filter },
-      { name: "Views / Screens", href: "/docs/high-level/views-screens", icon: Smartphone },
+      { name: "CMS Pages", href: "/docs/high-level/cms-pages", icon: Layout, status: 'waiting' },
+      { name: "Filters", href: "/docs/high-level/filters", icon: Filter, status: 'waiting' },
+      { name: "Views / Screens", href: "/docs/high-level/views-screens", icon: Smartphone, status: 'waiting' },
     ]
   }
 ];
@@ -109,6 +114,8 @@ export function Sidebar() {
             <ul className="space-y-0.5 border-l border-slate-200 dark:border-zinc-800 ml-2 pl-2">
               {category.items.map((item) => {
                 const isActive = pathname === item.href;
+                const status = item.status || 'waiting';
+                
                 return (
                   <li key={item.href}>
                     <Link
@@ -123,8 +130,18 @@ export function Sidebar() {
                       {isActive && (
                         <span className="absolute left-[-10px] top-1/2 -translate-y-1/2 w-1 h-5 bg-blue-600 rounded-r-md" />
                       )}
-                       <item.icon className={cn("w-4 h-4", isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300")} />
-                      {item.name}
+                      
+                      <item.icon className={cn("w-4 h-4 shrink-0", isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300")} />
+                      
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className={cn(
+                          "w-1.5 h-1.5 rounded-full shrink-0",
+                          status === 'done' && "bg-emerald-500",
+                          status === 'in-progress' && "bg-blue-500 animate-pulse",
+                          status === 'waiting' && "bg-amber-400"
+                        )} />
+                        <span>{item.name}</span>
+                      </div>
                     </Link>
                   </li>
                 );

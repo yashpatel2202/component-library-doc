@@ -1,4 +1,7 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
 
 # Audio Player
 
@@ -58,6 +61,7 @@ A specialized component for playing audio files, podcasts, or background music. 
     Notif -.->|Action| Handler`}
 
 description={
+
 <p>
 Audio playback often runs in a separate <strong>Background Isolate</strong> or Service
 to ensure uninterrupted playback when the app is backgrounded. The <strong>Audio Handler</strong>

@@ -100,7 +100,7 @@ export default function Home() {
           <FeatureCard
             href="/docs/utility/download-manager"
             title="Utility"
-            description="Essential background tools for file management, caching, and notifications."
+            description="Essential background tools for file management, caching, notifications, and payments."
             icon={Box}
             bgClass="bg-emerald-900/30"
             iconClass="text-emerald-400"

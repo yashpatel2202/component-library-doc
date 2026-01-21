@@ -1,4 +1,7 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
 
 # Views / Screens
 
@@ -60,6 +63,7 @@ Pre-composed screen templates that implement common app patterns, such as "Maste
     Master -->|Select| Settings`}
 
 description={
+
 <p>
 Views are composed using intelligent Layout Adapters. The <strong>Responsive Adapter</strong> inspects
 screen constraints at runtime to select the most appropriate template (e.g. List vs Grid, or single-pane vs multi-pane).

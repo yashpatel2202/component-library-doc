@@ -1,6 +1,9 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
- 
- # Notification Manager
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Notification Manager
 
 ## 1. Requirements Document
 
@@ -69,6 +72,7 @@ A global manager for dispatching and handling notifications, including in-app to
     Overlay -.->|Dismiss| NM`}
 
 description={
+
 <p>
 The <strong>NotificationManager</strong> acts as a bridge between your business logic and the UI overlay system.
 It handles the queuing, prioritizing, and displaying of alerts without requiring tight coupling to the Widget tree.

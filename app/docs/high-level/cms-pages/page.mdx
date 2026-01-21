@@ -1,4 +1,7 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
 
 # CMS Pages
 
@@ -56,6 +59,7 @@ A dynamic page renderer that interprets JSON/Server-driven UI definitions to bui
     Reg --Widget--> Page`}
 
 description={
+
 <p>
 The CMS Parser decodes raw JSON responses into native Flutter widgets using a
 runtime registry. This decoupling allows the server to dictate layout without

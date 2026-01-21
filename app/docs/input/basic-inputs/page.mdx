@@ -1,4 +1,7 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
 
 # Basic Input Components
 
@@ -67,6 +70,7 @@ All inputs extend a base `FormControl` model to ensure they can participate in a
     Base -->|Inherit| Switch`}
 
 description={
+
 <p>
 The input architecture relies on a shared <strong>BaseInput</strong> model that handles
 common tasks like validation, error state, and focus management, ensuring a consistent behavior

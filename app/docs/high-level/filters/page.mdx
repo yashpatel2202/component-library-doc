@@ -1,6 +1,9 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
- 
- # Filters
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Filters
 
 ## 1. Requirements Document
 
@@ -58,6 +61,7 @@ A comprehensive filtering system capable of generating UI for complex queries (e
      Builder -->|QueryString| UI`}
 
 description={
+
 <p>
 The Filter Engine relies on a centralized <strong>Bloc</strong> to manage the complexity of independent
 filter states and their dependencies. It compiles the final state into a canonical query suitable for API consumption.

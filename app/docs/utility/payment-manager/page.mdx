@@ -1,0 +1,182 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Payment Manager / Transaction Handler
+
+## 1. Requirements Document
+
+### Overview
+
+A comprehensive utility for orchestrating payment flows, managing transaction sessions, and abstracting the complexity of multiple payment gateways. It provides a unified interface for handling payments, ensuring security and compliance while delivering a seamless user experience.
+
+### User Stories
+
+- **As a User**, I want to pay securely using my preferred method (Credit Card, UPI, Wallet).
+- **As a User**, I want immediate feedback on the transaction status (Success/Failure).
+- **As a Developer**, I want to switch between payment providers (e.g., Stripe, PayPal, Razorpay) without changing the UI code.
+- **As a Developer**, I want to handle transaction verification and receipts consistently.
+
+### Functional Requirements
+
+1.  **Gateway Abstraction**:
+    - Support for multiple providers via a unified adapter pattern.
+    - Dynamic switching based on region or configuration.
+2.  **Transaction Management**:
+    - Initiate, Verify, and Complete transactions.
+    - Handle idempotency keys to prevent duplicate charges.
+3.  **Security**:
+    - PCI-DSS compliant handling (delegated to SDKs/Webviews).
+    - Tokenization of sensitive data.
+4.  **Events & Callbacks**:
+    - Real-time status updates (Processing, Success, Failed, Cancelled).
+    - Comprehensive error codes and messages.
+
+### Non-Functional Requirements
+
+- **Security**: Zero storage of raw credit card numbers. Secure communication channels.
+- **Reliability**: Robust handling of network dropouts during transactions.
+- **Compliance**: Adherence to regional payment regulations (e.g., SCA in Europe).
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef adapter fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+    classDef external fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef state fill:#eff6ff,stroke:#93c5fd,stroke-width:2px,color:#1e40af,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Client [App Layer]
+        direction TB
+        UI[Checkout UI]:::state
+    end
+
+    subgraph Core [Payment System]
+        direction TB
+        PM[Payment<br/>Manager]:::core
+        Adapter[Gateway<br/>Adapter]:::adapter
+    end
+
+    subgraph Infrastructure [External / Backend]
+        direction TB
+        SDK[Provider<br/>SDK]:::external
+        API[Payment<br/>API]:::external
+    end
+
+    %% Connections
+    UI -->|Initiate| PM
+    PM -->|Config| Adapter
+    Adapter -->|Process| SDK
+    Adapter -->|Verify| API
+    SDK -.->|Callback| PM
+    PM -->|Result| UI`}
+
+description={
+
+<>
+<p>
+The <strong>PaymentManager</strong> serves as the secure orchestrator for all financial transactions.
+</p>
+<ul className="list-disc pl-4 space-y-2 mt-2">
+<li>
+It uses the <strong>Adapter Pattern</strong> to decouple the core application logic from specific payment provider implementations.
+</li>
+<li>
+It manages the transaction lifecycle, ensuring that state changes (e.g., from Processing to Success) are atomic and reflected in the UI.
+</li>
+<li>
+It communicates with the backend API for critical verification steps before confirming a successful order.
+</li>
+</ul>
+</>
+}
+/>
+
+### API Design
+
+#### Core Interface
+
+The core abstraction allows any payment provider to be plugged in.
+
+```dart
+abstract class PaymentAdapter {
+  Future<TransactionResult> processPayment(PaymentConfig config);
+  Future<bool> verifyTransaction(String transactionId);
+}
+
+class PaymentManager {
+  final PaymentAdapter adapter;
+
+  PaymentManager(this.adapter);
+
+  Stream<PaymentStatus> get status;
+  Future<void> initiate(PaymentConfig config);
+}
+```
+
+#### Configuration
+
+Configuration objects define the parameters for a transaction, sealed to enforce valid combinations.
+
+```dart
+sealed class PaymentConfig {
+    final double amount;
+    final String currency;
+    const PaymentConfig({required this.amount, required this.currency});
+}
+
+class CardPayment extends PaymentConfig {
+    final String? preTokenizedId;
+    const CardPayment({
+        required double amount,
+        required String currency,
+        this.preTokenizedId
+    }) : super(amount: amount, currency: currency);
+}
+
+class WalletPayment extends PaymentConfig {
+    final String walletProvider; // e.g. 'GooglePay', 'ApplePay'
+    const WalletPayment({
+        required double amount,
+        required String currency,
+        required this.walletProvider
+    }) : super(amount: amount, currency: currency);
+}
+```
+
+#### Service Injection
+
+Ideally used with a dependency injection framework to provide the correct adapter based on environment or feature flags.
+
+```dart
+// Setup
+final paymentAdapter = GetIt.I.registerSingleton<PaymentAdapter>(
+  kIsWeb ? StripeWebAdapter() : StripeMobileAdapter()
+);
+
+// Usage
+final paymentManager = PaymentManager(GetIt.I<PaymentAdapter>());
+paymentManager.initiate(
+  CardPayment(amount: 49.99, currency: 'USD')
+);
+```
+
+### Theming
+
+Payment UI components (like saved card lists or payment method selectors) leverage the design system:
+
+- **Secure Fields**: distinct visual treatment for sensitive inputs ensuring user trust.
+- **Brand Colors**: Payment buttons often utilize the specific brand color of the provider (e.g., PayPal Blue) but can be overridden.
+
+### Data Layer & State
+
+- **State Machine**: The manager implements a strict state machine: `Idle -> Validating -> Processing -> Verifying -> [Success | Failed]`.
+- **Security Storage**: Sensitive tokens are never stored in plain text. Use `FlutterSecureStorage` or equivalent for session tokens if needed.
