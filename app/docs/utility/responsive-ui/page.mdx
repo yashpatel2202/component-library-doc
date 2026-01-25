@@ -1,0 +1,155 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Responsive UI
+
+## 1. Requirements Document
+
+### Overview
+
+A comprehensive solution for creating adaptable and device-agnostic user interfaces. It abstracts screen size and orientation handling directly through utility wrappers and hooks, enabling consistent experiences across mobile, tablet, and desktop.
+
+### User Stories
+
+- **As a Developer**, I want to define layouts once and have them adapt to various screen sizes automatically.
+- **As a Designer**, I want to ensure typography and spacing scale appropriately with the viewport.
+- **As a User**, I expect the application to be usable and aesthetically pleasing on both my phone and laptop.
+
+### Functional Requirements
+
+1.  **Breakpoints System**:
+    - Configurable standard breakpoints (Mobile, Tablet, Desktop, Wide).
+    - Custom override support.
+2.  **Adaptive Builders**:
+    - Widgets that rebuild specifically for `mobile`, `tablet`, or `desktop`.
+3.  **Scaling Utilities**:
+    - Functions/Extensions to scale text and UI elements based on viewport width (e.g., `10.sw`, `20.sp`).
+4.  **Orientation Handling**:
+    - Detect and react to Portrait vs. Landscape changes.
+
+### Non-Functional Requirements
+
+- **Performance**: Listening to resize events should not cause unnecessary full-app rebuilds.
+- **Consistency**: Breakpoints must match the design system specs exactly.
+- **Ease of Use**: Should reduce boilerplate `LayoutBuilder` code.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef util fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef ui fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Core [Logic Layer]
+        direction TB
+        SizeConfig[Size<br/>Config]:::core
+        BP[Breakpoint<br/>Resolver]:::core
+    end
+
+    subgraph Utilities [Helpers]
+        direction TB
+        Ext[Extensions<br/>.w .h .sp]:::util
+        Hooks[Hooks<br/>useScreenType]:::util
+    end
+
+    subgraph UI [Components]
+        direction TB
+        Responsive[Responsive<br/>Builder]:::ui
+        Layout[Adaptive<br/>Layout]:::ui
+    end
+
+    %% Connections
+    SizeConfig -->|Init| BP
+    BP -->|Provide| Responsive
+    BP -->|Provide| Ext
+    Responsive -->|Build| Layout
+    Ext -.->|Scale| Layout`}
+
+description={
+
+<p>
+The <strong>Responsive UI</strong> architecture centers around a global `SizeConfig` that initializes on app startup. 
+Components like `ResponsiveBuilder` listen to changes in this config to conditionally render sub-trees, while extensions provide fluid scaling for non-structural elements.
+</p>
+}
+/>
+
+### API Design
+
+#### Initialization
+
+Initialize the `ScreenUtil` or `SizeConfig` at the root of your application, usually in the build method of your `MaterialApp` or `CupertinoApp`.
+
+```dart
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ScreenUtilInit(
+      designSize: const Size(375, 812), // Design Draft Size
+      builder: (context, child) {
+        return MaterialApp(
+          home: HomePage(),
+        );
+      },
+    );
+  }
+}
+```
+
+#### Responsive Builder Widget
+
+A builder that supplies specific builders for different device types.
+
+```dart
+ResponsiveBuilder(
+  mobile: (context) => MobileLayout(),
+  tablet: (context) => TabletLayout(),
+  desktop: (context) => DesktopLayout(),
+  // Fallback behavior
+  watch: (context) => Container(color: Colors.red),
+)
+```
+
+#### Orientation Layout
+
+Separate logical flows for orientation changes.
+
+```dart
+OrientationLayoutBuilder(
+  portrait: (context) => Column(...),
+  landscape: (context) => Row(...),
+)
+```
+
+#### Size Extensions
+
+Use extension methods to size elements relative to the screen size.
+
+```dart
+// Width relative to screen width
+Container(width: 50.w);
+
+// Height relative to screen height
+Container(height: 100.h);
+
+// Font size (scales with density)
+Text(
+  "Hello",
+  style: TextStyle(fontSize: 24.sp),
+)
+```
+
+### Best Practices
+
+- **Layout First**: Use `ResponsiveBuilder` for high-level structure changes (e.g., Drawer on Mobile vs. Sidebar on Desktop).
+- **Fluid Content**: Use `.w`, `.h` for internal component spacing to maintain proportions.
+- **Avoid Hardcoding**: Never use fixed pixel double values for main layout containers if they need to be responsive.

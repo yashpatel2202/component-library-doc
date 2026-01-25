@@ -1,0 +1,141 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="waiting" />
+
+# Adaptive UI Component
+
+## 1. Requirements Document
+
+### Overview
+
+A core mechanism to handle platform-specific UI adaptations. Unlike "Responsive UI" which deals with screen sizes, "Adaptive UI" ensures the application feels native on every platform (iOS, Android, Web, macOS, Windows) by automatically swapping widget implementations and behaviors.
+
+### User Stories
+
+- **As a Developer**, I want to write one generic widget (e.g., `AdaptiveSwitch`) that renders as `Switch` on Material and `CupertinoSwitch` on iOS.
+- **As a User**, I expect the app to behave consistently with my operating system's conventions (e.g., swipe-to-back on iOS).
+- **As a Developer**, I want to centrally manage platform-specific styling defaults.
+
+### Functional Requirements
+
+1.  **Platform Detection**:
+    - Reliable detection of host platform (iOS, Android, Web, Desktop).
+2.  **Adaptive Widgets**:
+    - Wrappers for common UI elements: Button, Slider, Switch, Spinner, Dialog, Scaffold.
+3.  **Behavior Adaptation**:
+    - Scroll physics (Bouncing vs Clamping).
+    - Navigation transitions.
+    - Dialog presentation styles.
+
+### Non-Functional Requirements
+
+- **Zero Overhead**: Wrappers should not introduce significant performance costs.
+- **Transparency**: Developer should be able to access the underlying native widget properties if needed.
+- **Maintainability**: Centralized mapping of platform rules.
+
+---
+
+## 2. Technical Document
+
+### Architecture
+
+<ArchitectureGraph
+  diagram={`graph LR
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef adapt fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef native fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    %% Nodes
+    subgraph Core [Core Logic]
+        direction TB
+        Platform[Platform<br/>Detector]:::core
+        Theme[Adaptive<br/>Theme]:::core
+    end
+
+    subgraph Adapters [Adaptive Widgets]
+        direction TB
+        ABtn[Adaptive<br/>Button]:::adapt
+        ASwitch[Adaptive<br/>Switch]:::adapt
+        ADialog[Adaptive<br/>Dialog]:::adapt
+    end
+
+    subgraph Native [Native Implementations]
+        direction TB
+        Mat[Material<br/>Widgets]:::native
+        Cup[Cupertino<br/>Widgets]:::native
+        Fluent[Fluent/Mac<br/>Widgets]:::native
+    end
+
+    %% Connections
+    Platform -->|Inform| Adapters
+    Theme -->|Style| Adapters
+    Adapters -.->|Android| Mat
+    Adapters -.->|iOS| Cup
+    Adapters -.->|Desktop| Fluent`}
+
+description={
+
+<p>
+The <strong>Adaptive UI</strong> system uses a `PlatformDetector` to determine the runtime environment. 
+Adaptive widgets (like `AdaptiveButton`) consult this detector and the `AdaptiveTheme` to decide which native implementation (Material, Cupertino, etc.) to render, abstracting bifurcation logic away from business code.
+</p>
+  }
+/>
+
+### API Design
+
+#### Adaptive Widget Usage
+
+Use `Adaptive` widgets instead of specific Material or Cupertino ones.
+
+```dart
+AdaptiveButton(
+  onPressed: () => submit(),
+  child: Text("Submit"),
+  // Optional: Platform specific overrides
+  materialBuilder: (context, child, callback) => ElevatedButton(...),
+  cupertinoBuilder: (context, child, callback) => CupertinoButton(...),
+)
+```
+
+#### Platform Aware Hooks
+
+Access platform info directly when custom logic is needed.
+
+```dart
+if (Platform.isIOS) {
+  // Do iOS specific logic
+}
+```
+
+#### Scaffold Wrapper
+
+Automatically handles platform specific top-bars and bottom-bars.
+
+```dart
+AdaptiveScaffold(
+  title: "Settings",
+  body: SettingsList(),
+  // Renders NavigationBar on Android, TabBar on iOS
+  navigationBar: AdaptiveNavBar(
+    items: [ ... ],
+  ),
+)
+```
+
+### Supported Components
+
+- **AdaptiveScaffold**: Structure.
+- **AdaptiveAppBar**: Navigation header.
+- **AdaptiveButton**: Text/Icon buttons.
+- **AdaptiveSwitch**: Toggles.
+- **AdaptiveSlider**: Range selection.
+- **AdaptiveActivityIndicator**: Loading spinners.
+- **AdaptiveAlertDialog**: Popups.
+
+### Best Practices
+
+- **Use Defaults**: rely on the adaptive wrappers by default; only drop down to `Platform.isX` checks for complex custom UI.
+- **Theme Consistency**: Ensure your `MaterialTheme` and `CupertinoTheme` are kept in sync color-wise so adaptation doesn't look jarring.

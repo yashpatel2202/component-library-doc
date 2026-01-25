@@ -31,7 +31,9 @@ import {
   Package,
   Link as LinkIcon,
   LayoutTemplate,
-  Lock
+  Lock,
+  Monitor,
+  AppWindow
 } from "lucide-react";
 
 type DocStatus = 'done' | 'in-progress' | 'waiting';
@@ -56,6 +58,7 @@ const navCategories: Category[] = [
     items: [
       { name: "Utils & Results", href: "/docs/core/utils", icon: Wrench, status: 'in-progress' },
       { name: "HTTP Client", href: "/docs/core/http", icon: Globe, status: 'waiting' },
+      { name: "Adaptive UI", href: "/docs/core/adaptive-ui", icon: AppWindow, status: 'waiting' },
     ]
   },
   {
@@ -66,6 +69,7 @@ const navCategories: Category[] = [
       { name: "Download Manager", href: "/docs/utility/download-manager", icon: Download, status: 'waiting' },
       { name: "Notification Manager", href: "/docs/utility/notification-manager", icon: Bell, status: 'waiting' },
       { name: "Payment Manager", href: "/docs/utility/payment-manager", icon: CreditCard, status: 'waiting' },
+      { name: "Responsive UI", href: "/docs/utility/responsive-ui", icon: Monitor, status: 'waiting' },
     ]
   },
   {
