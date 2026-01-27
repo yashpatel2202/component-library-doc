@@ -1,0 +1,36 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+
+<DocStatus status="in-progress" />
+
+# Converters
+
+### Overview
+
+Reusable converting logic for data types commonly shared across the project.
+
+### User Story
+
+- **As a Developer**, I want reusable converters for common data types (Date, Currency, JSON).
+
+### Functional Requirements
+
+- **JSON Converter**: Mixins for standard entity parsing.
+- **DateTime**: Utilities for standardized date formatting.
+- **Numbers**: Currency and numeric formatting helpers.
+
+### API Design
+
+```dart
+abstract class JsonConverter<T> {
+  T fromJson(Map<String, dynamic> json);
+  Map<String, dynamic> toJson(T object);
+}
+
+// Usage
+class DateTimeConverter implements JsonConverter<DateTime> {
+    @override
+    DateTime fromJson(json) => DateTime.parse(json);
+    // ...
+}
+```

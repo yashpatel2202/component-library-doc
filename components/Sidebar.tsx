@@ -33,7 +33,9 @@ import {
   LayoutTemplate,
   Lock,
   Monitor,
-  AppWindow
+  AppWindow,
+  Shuffle,
+  CaseLower
 } from "lucide-react";
 
 type DocStatus = 'done' | 'in-progress' | 'waiting';
@@ -56,7 +58,9 @@ const navCategories: Category[] = [
     title: "Core Library",
     icon: Cpu,
     items: [
-      { name: "Utils & Results", href: "/docs/core/utils", icon: Wrench, status: 'in-progress' },
+      { name: "Results", href: "/docs/core/results", icon: Shuffle, status: 'in-progress' },
+      { name: "Converters", href: "/docs/core/converters", icon: CaseLower, status: 'in-progress' },
+      { name: "Utilities", href: "/docs/core/utils", icon: Wrench, status: 'in-progress' },
       { name: "HTTP Client", href: "/docs/core/http", icon: Globe, status: 'waiting' },
       { name: "Adaptive UI", href: "/docs/core/adaptive-ui", icon: AppWindow, status: 'waiting' },
     ]

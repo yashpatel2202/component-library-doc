@@ -1,0 +1,179 @@
+import { ArchitectureGraph } from "@/components/ArchitectureGraph";
+import { DocStatus } from "@/components/DocStatus";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
+
+<DocStatus status="in-progress" />
+
+<div className="mt-8" />
+
+<Tabs defaultValue="standard">
+  <TabsList className="grid w-full grid-cols-2">
+    <TabsTrigger value="standard">Result Pattern (KResult)</TabsTrigger>
+    <TabsTrigger value="staged">Staged Result (KStaged)</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="standard">
+    # Result Pattern
+
+    ## 1. Requirements Document
+
+    ### 1.1 Overview
+
+    `KResult<T>` is a type-safe, sealed result abstraction for Dart/Flutter applications that standardizes success and failure handling without throwing exceptions across layers (data, domain, UI).
+
+    The system introduces:
+    - A sealed `KResult<T>` to represent operation outcomes.
+    - A unified `KFailure` model to encapsulate all failure information.
+    - A flexible mechanism for developers to define domain-specific failures.
+    - Automatic exception-to-user-friendly message mapping.
+    - Optional UI-aware failure representation without coupling business logic to UI.
+
+    The goal is to provide **predictable error handling**, **clear separation of concerns**, and **strong extensibility** without inheritance abuse.
+
+    ### 1.2 User Stories
+
+    - **US-1: As an application developer**, I want to return a single result type from functions so I don’t need to mix try/catch, nulls, and custom error objects.
+    - **US-2: As a library user**, I want consumers of my API to handle failures explicitly and consistently.
+    - **US-3: As a domain developer**, I want to define my own failure types (e.g., `AuthFailure`) without modifying core framework code.
+    - **US-4: As a UI developer**, I want access to both user-friendly messages and optional UI widgets when displaying errors.
+    - **US-5: As a platform integrator**, I want all exceptions to be safely captured and mapped to non-crashing, user-friendly failures.
+
+    ### 1.3 Functional Requirements
+
+    1.  **Result Abstraction**: `KResult<T>` must be sealed with exactly two states: `Success` and `Failure`.
+    2.  **Success Handling**: Success must contain a non-null value `T` and an optional message.
+    3.  **Failure Handling**: Failure must contain a `KFailure` instance. No exception should escape the public API surface.
+    4.  **Unified Failure Creation**: Failures must be creatable from: `Exception`, `String`, `KFailureMixin`, or fallback objects.
+    5.  **Exception Mapping**: Known exceptions map to friendly messages; unknown map to "Internal error".
+    6.  **Developer Extensibility**: define domain-specific failures via Mixins, not direct inheritance.
+    7.  **UI Support**: Failures may optionally expose a Flutter Widget for UI rendering.
+
+    ### 1.4 Non-Functional Requirements
+
+    - **Type Safety**: Enforced at compile time via sealed classes.
+    - **API Clarity**: Minimal and self-explanatory public API.
+    - **Performance**: Lightweight construction, no reflection.
+    - **Maintainability**: Internal failure types must be private/final.
+    - **Testability**: Logic testable without Flutter bindings where possible.
+
+    ---
+
+    ## 2. Technical Document
+
+    ### 2.1 Architecture
+
+    <ArchitectureGraph
+      diagram={`graph TD
+        subgraph APP [Application Layer]
+            UI[UI / Domain Logic]
+        end
+
+        subgraph API [Public API]
+            KRes[KResult<T> sealed]
+            KSuc[KSuccess<T>]
+            KErr[KError<T>]
+            KFail[KFailure sealed]
+        end
+
+        subgraph INT [Internal Logic]
+            Mapper[Exception Mapper]
+            DevMix[KFailureMixin]
+        end
+
+        UI -->|Uses| KRes
+        KRes -->|Factory| KSuc
+        KRes -->|Factory| KErr
+        KErr -->|Contains| KFail
+        KFail -->|Uses| Mapper
+        KFail -.->|Supports| DevMix`}
+
+      description={
+    <p>
+    The architecture enforces a strict boundary between <strong>Public API</strong> and <strong>Internal Implementation</strong>.
+    `KResult&lt;T&gt;` serves as the single point of return. `KFailure` abstracts away the messy details of Exceptions versus Strings versus Custom Errors, presenting a unified face to the UI consumers.
+    </p>
+      }
+    />
+
+    ### 2.2 API Design
+
+    #### Result Structure
+
+    ```dart
+    sealed class KResult<T> {
+      const KResult();
+
+      // Factory Constuctors
+      factory KResult.value(T value, {String? message}) = KSuccess<T>;
+      factory KResult.error(Object error) = KError<T>;
+    }
+
+    final class KSuccess<T> extends KResult<T> {
+      final T value;
+      final String? message;
+      const KSuccess(this.value, {this.message});
+    }
+
+    final class KError<T> extends KResult<T> {
+      final KFailure failure;
+
+      // Private constructor to enforce factory usage
+      const KError._(this.failure);
+
+      factory KError(Object error) {
+        return KError._(KFailure.from(error));
+      }
+    }
+    ```
+
+    #### Failure & Mixin
+
+    ```dart
+    sealed class KFailure {
+      final String message;
+      final Widget? messageUI; // Optional UI representation
+
+      // Factory automatically resolves input type
+      factory KFailure.from(Object error);
+    }
+
+    mixin KFailureMixin {
+      String? get message;
+      Widget? get messageUI => null;
+    }
+    ```
+
+    ### 2.3 Error Resolution Flow
+
+    When `KResult.error(obj)` is called, the `obj` is processed in this order:
+
+    1.  **KFailureMixin**: Uses developer-defined message/UI.
+    2.  **Exception**: Passed to internal `ExceptionMapper`.
+    3.  **String**: Used directly as the error message.
+    4.  **Fallback**: "Internal error" or similar safe default.
+
+    ### 2.4 Extensibility Strategy
+
+    Developers should extend behavior via the `KFailureMixin`, not by subclassing `KResult` or `KFailure` directly. This keeps the core invariant (success vs failure) protected while allowing infinite domain specificity.
+
+    ```dart
+    class AuthFailure with KFailureMixin {
+      @override
+      String get message => "Invalid Credentials";
+    }
+
+    // Usage
+    return KResult.error(AuthFailure());
+    ```
+
+  </TabsContent>
+
+  <TabsContent value="staged">
+    # Staged Result Pattern
+
+    *Documentation coming soon...*
+
+    This pattern will address scenarios requiring intermediate states (Idle, Loading) in addition to Success and Failure.
+
+  </TabsContent>
+</Tabs>
