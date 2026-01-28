@@ -171,9 +171,231 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
   <TabsContent value="staged">
     # Staged Result Pattern
 
-    *Documentation coming soon...*
+    ## 1. Requirements Document
 
-    This pattern will address scenarios requiring intermediate states (Idle, Loading) in addition to Success and Failure.
+    ### 1.1 Overview
+
+    `KStageProcessor` is a staged-result execution framework designed to process a finite, ordered set of stages, where each stage produces a `KResult<T>` and may optionally terminate execution early.
+
+    The framework enables:
+    - **Deterministic, step-wise execution**.
+    - **Early termination** (e.g. cache hit).
+    - **Optional observation** of intermediate results.
+    - **Shared execution** across concurrent callers.
+    - **Automatic lifecycle completion** (no manual close).
+
+    It intentionally avoids stream-based semantics in favor of bounded, staged output.
+
+    ### 1.2 User Stories
+
+    - **US-1: Cache-first Resolution**: As a developer, I want to try multiple resolution strategies in order and stop once a valid result is found.
+    - **US-2: Observe Progress Without Streams**: As a developer, I want to observe intermediate results without managing stream subscriptions or closures.
+    - **US-3: Prevent Duplicate Async Execution**: As a developer, I want multiple concurrent callers to share the same execution instead of triggering duplicate work.
+    - **US-4: Deterministic Completion**: As a developer, I want the execution to always complete automatically with a final result.
+
+    ### 1.3 Functional Requirements
+
+    1.  **Sequential Execution**: Stages must execute sequentially in declared order.
+    2.  **Staged Input**: Each stage receives the previous staged result.
+    3.  **Early Termination**: Stages may terminate execution early.
+    4.  **Observability**: Intermediate results must be observable.
+    5.  **Concurrency**: Concurrent calls must share the same execution.
+    6.  **Finality**: Final result must always be returned as `KResult<T>`.
+
+    ### 1.4 Non-Functional Requirements
+
+    - **No stacktrace retention**.
+    - **No unbounded emissions**.
+    - **No replay** of intermediate results.
+    - **Lightweight memory footprint**.
+    - **Predictable lifecycle**.
+
+    ### 1.5 Explicit Design Decisions
+
+    - **Listener mutation and re-entrancy** are developer responsibilities.
+    - **Late listeners** intentionally miss earlier stages.
+    - **`handler.isLast`** reflects execution state, not pipeline structure.
+    - **Streams are explicitly avoided** in favor of staged results.
+
+    ---
+
+    ## 2. Technical Document
+
+    ### 2.1 Architecture
+
+    <ArchitectureGraph
+      diagram={`graph TD
+        subgraph Client [Caller]
+            C1[Caller A]
+            C2[Caller B]
+        end
+
+        subgraph Proc [Processor Lifecycle]
+            Guard[Execution Guard<br/>Completer]
+            Seq[Sequential Executor]
+        end
+
+        subgraph Stages [Execution Pipeline]
+            S1[Stage 1<br/>Cache]
+            S2[Stage 2<br/>Remote]
+        end
+
+        C1 -->|Request| Guard
+        C2 -->|Request| Guard
+        Guard -->|Single Execution| Seq
+        Seq -->|Step 1| S1
+        S1 -->|Intermediate| Seq
+        Seq -->|Step 2| S2
+        S2 -->|Final Result| Guard
+        Guard -->|Return| C1
+        Guard -->|Return| C2`}
+
+      description={
+    <p>
+    The <strong>KStageProcessor</strong> ensures that multiple concurrent calls result in a single pipeline execution.
+    It iterates through defined stages (e.g., Cache &rarr; API), allowing any stage to terminate the pipeline early if a definitive result is found.
+    </p>
+      }
+    />
+
+    ### 2.2 API Design
+
+    #### KStageProcessor
+
+    ```dart
+    class KStageProcessor<T> {
+      final List<KStage<T>> _stages;
+      Completer<KResult<T>>? _completer;
+
+      final List<void Function(KResult<T> result, KStageHandler handler)>
+          _listeners = [];
+
+      KStageProcessor(this._stages);
+
+      FutureOr<KResult<T>> process([
+        void Function(KResult<T> result, KStageHandler handler)? resultListener,
+      ]) async {
+        if (resultListener != null) _listeners.add(resultListener);
+
+        if (_completer != null && !_completer!.isCompleted) {
+          return _completer!.future;
+        }
+
+        _completer = Completer<KResult<T>>();
+
+        try {
+          final result = await _process();
+          _completer!.complete(result);
+          return result;
+        } catch (e) {
+          final failure = KResult<T>.error(e);
+          _completer!.complete(failure);
+          return failure;
+        } finally {
+          _completer = null;
+          _listeners.clear();
+        }
+      }
+
+      FutureOr<KResult<T>> _process() async {
+        final KStageHandler handler = KStageHandler();
+        KStagedResult<T> result = const InitialResult();
+
+        for (int i = 0; i < _stages.length; i++) {
+          if (handler._processNext) {
+            final stage = _stages[i];
+            if (i == _stages.length - 1) handler.isLast = true;
+
+            final resp = await stage.execute(result, handler);
+            result = IntermediateResult(resp);
+
+            for (final listener in _listeners) {
+              listener.call(resp, handler);
+            }
+          }
+        }
+
+        switch (result) {
+          case InitialResult<T>():
+            return KResult.error(ErrorMessage.noResultMessage);
+          case IntermediateResult<T>():
+            return result.result;
+        }
+      }
+
+}
+
+    ```
+
+    #### KStageHandler & Result
+
+    ```dart
+    class KStageHandler {
+      bool _processNext = true;
+      bool isLast = false;
+
+      void terminate() {
+        _processNext = false;
+        isLast = true;
+      }
+    }
+
+    sealed class KStagedResult<T> { const KStagedResult(); }
+    class InitialResult<T> extends KStagedResult<T> { const InitialResult(); }
+    class IntermediateResult<T> extends KStagedResult<T> {
+      final KResult<T> result;
+      const IntermediateResult(this.result);
+    }
+    ```
+
+    #### KStage
+
+    ```dart
+    abstract class KStage<T> {
+      const KStage();
+
+      FutureOr<KResult<T>> execute(
+        KStagedResult<T> previousResult,
+        KStageHandler handler,
+      );
+    }
+    ```
+
+    ### 2.3 Examples
+
+    #### Correct Usage (Cache First)
+    ```dart
+    class CacheStage<T> extends KStage<T> {
+      @override
+      FutureOr<KResult<T>> execute(previous, handler) async {
+        // If we found it in cache, stop here
+        if (hasCache) {
+            handler.terminate();
+            return KResult.value(cacheData);
+        }
+        return KResult.error('Cache miss');
+      }
+    }
+
+    class RemoteStage<T> extends KStage<T> {
+      const RemoteStage();
+
+      @override
+      FutureOr<KResult<T>> execute(previous, _) async {
+        return KResult.error('Remote failed');
+      }
+    }
+
+    // Usage
+    final processor = KStageProcessor([
+      CacheStage(),
+      RemoteStage(),
+    ]);
+
+    final result = await processor.process((result, handler) {
+      if (!handler.isLast) print("Got intermediate result");
+    });
+    ```
 
   </TabsContent>
 </Tabs>
