@@ -58,7 +58,7 @@ const navCategories: Category[] = [
     title: "Core Library",
     icon: Cpu,
     items: [
-      { name: "Results", href: "/docs/core/results", icon: Shuffle, status: 'in-progress' },
+      { name: "Results", href: "/docs/core/results", icon: Shuffle, status: 'done' },
       { name: "Converters", href: "/docs/core/converters", icon: CaseLower, status: 'in-progress' },
       { name: "Utilities", href: "/docs/core/utils", icon: Wrench, status: 'in-progress' },
       { name: "HTTP Client", href: "/docs/core/http", icon: Globe, status: 'waiting' },
