@@ -3,6 +3,7 @@ import { Steps, Step } from '@/components/mintlify/Steps';
 import { PageHeader } from '@/components/mintlify/PageHeader';
 import { Card, CardGroup } from '@/components/mintlify/Card';
 import { Callout, InfoCallout, WarningCallout, TipCallout, ErrorCallout, CheckCallout, NoteCallout } from '@/components/mintlify/Callout';
+import { Pre } from '@/components/Pre';
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -20,5 +21,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Error: ErrorCallout,
     Check: CheckCallout,
     Note: NoteCallout,
+    pre: Pre,
   }
 }
