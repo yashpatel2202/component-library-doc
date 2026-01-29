@@ -79,7 +79,7 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link 
-              href="/docs/core/utils"
+              href="/docs/core/results"
               className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
             >
               Get Started <ArrowRight className="w-4 h-4" />
@@ -98,7 +98,7 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-6 pb-32">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <FeatureCard
-            href="/docs/core/utils"
+            href="/docs/core/results"
             title="Core Library"
             description="Foundational utilities, result patterns, and robust HTTP networking."
             icon={Cpu}
