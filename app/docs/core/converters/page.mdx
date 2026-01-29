@@ -1,36 +1,300 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
 import { DocStatus } from "@/components/DocStatus";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 
-<DocStatus status="in-progress" />
+<DocStatus status="done" />
 
-# Converters
+<div className="mt-8" />
 
-### Overview
+<Tabs defaultValue="json-registry">
+  <TabsList className="grid w-full grid-cols-2">
+    <TabsTrigger value="json-registry">JSON Registry</TabsTrigger>
+    <TabsTrigger value="common">Common Converters</TabsTrigger>
+  </TabsList>
 
-Reusable converting logic for data types commonly shared across the project.
+  <TabsContent value="json-registry">
+    # JSON Converter & Registry
 
-### User Story
+    ## 1. Requirements Document
 
-- **As a Developer**, I want reusable converters for common data types (Date, Currency, JSON).
+    ### 1.1 Overview
 
-### Functional Requirements
+    This library provides a **compile-time generated JSON conversion registry** that enables applications to convert raw JSON data into strongly typed objects using a centralized mechanism.
 
-- **JSON Converter**: Mixins for standard entity parsing.
-- **DateTime**: Utilities for standardized date formatting.
-- **Numbers**: Currency and numeric formatting helpers.
+    Instead of relying on conditional logic, reflection, or scattered factory calls, the solution introduces:
 
-### API Design
+    *   Explicit opt-in via annotations
+    *   Build-time discovery of eligible models
+    *   A generated registry mapping types to JSON factory functions
+    *   A single runtime entry point for decoding objects and lists
 
-```dart
-abstract class JsonConverter<T> {
-  T fromJson(Map<String, dynamic> json);
-  Map<String, dynamic> toJson(T object);
-}
+    The design philosophy mirrors established dependency-injection patterns where registration is code-generated and initialization is explicitly invoked by the developer.
 
-// Usage
-class DateTimeConverter implements JsonConverter<DateTime> {
-    @override
-    DateTime fromJson(json) => DateTime.parse(json);
-    // ...
-}
-```
+    ### 1.2 User Stories
+
+    *   **US-1**: As an application developer, I want to convert JSON into typed objects without writing repetitive parsing logic.
+    *   **US-2**: As a framework user, I want support for multiple model-generation strategies without changing runtime code.
+    *   **US-3**: As a plugin author, I want to decode models dynamically using their type.
+    *   **US-4**: As a maintainer, I want all supported models to be discoverable at compile time.
+    *   **US-5**: As a performance-conscious developer, I want zero reflection and predictable runtime behavior.
+
+    ### 1.3 Functional Requirements
+
+    1.  **Annotation-Driven**: Developers must be able to mark models as eligible for JSON conversion using a package-specific annotation.
+    2.  **Single Strategy**: Exactly one conversion strategy must be declared per model.
+    3.  **Registry Generation**: The build system must scan annotated models and generate a registry file.
+    4.  **Type Mapping**: The generated registry must map runtime types to JSON factory functions.
+    5.  **Initialization**: The library must provide a standard initialization hook for registering generated factories.
+    6.  **Runtime API**: The runtime API must support:
+        *   Decoding a single object from a map
+        *   Decoding a list of objects from an iterable
+        *   Type-safe generic decoding
+    7.  **Result-Based Results**: The system must provide structured success and failure results.
+
+    ### 1.4 Non-Functional Requirements
+
+    *   **No runtime reflection**
+    *   Compatible with Flutter and pure Dart environments
+    *   Deterministic build output
+    *   **Minimal runtime overhead**
+    *   Clear error messages for misconfiguration
+    *   Safe handling of invalid or unexpected JSON shapes
+
+    ### 1.5 Constraints & Assumptions
+
+    *   Only explicitly annotated models participate in conversion
+    *   Code generation is mandatory
+    *   Initialization must be performed exactly once
+    *   JSON input is assumed to be decoded into map / list structures prior to usage
+
+    ---
+
+    ## 2. Technical Document
+
+    ### 2.1 Architecture
+
+    <ArchitectureGraph
+      diagram={`graph TD
+        subgraph App [Application]
+            Code[Annotated Models]
+            Init[Init Hook]
+        end
+
+        subgraph Build [Build Time]
+            Gen[Code Generator]
+            Scan[Analyzer Scan]
+            Reg[Generated Registry]
+        end
+
+        subgraph Runtime [Runtime Logic]
+            Parser[JsonTypeParser]
+            Fact[Factory Map]
+        end
+
+        Code -->|Annotated| Scan
+        Scan -->|Extracts Factories| Gen
+        Gen -->|Outputs| Reg
+        Init -->|Registers| Reg
+        Reg -->|Populates| Fact
+        Parser -->|Looks up| Fact`}
+
+      description={
+        <p>
+        The workflow is split into two phases: specific factory discovery at <strong>Build Time</strong> and generic type resolution at <strong>Runtime</strong>. The Generated Registry acts as the bridge, ensuring no reflection is required.
+        </p>
+      }
+    />
+
+    ### 2.2 API Design
+
+    #### Annotation & Strategy Declaration
+
+    ```dart
+    class KConvert {
+      final KConvertType type;
+      const KConvert({required this.type});
+    }
+
+    enum KConvertType { jsonSerializable, freezed, custom }
+    ```
+
+    ```dart
+    @JsonSerializable()
+    @KConvert(type: KConvertType.jsonSerializable)
+    class MyClass {
+       // ...
+    }
+    ```
+
+    #### Generated Registry (Example Output)
+
+    ```dart
+    // Generated Code - Do not modify
+    typedef JsonFactory<T> = T Function(Map<String, dynamic> json);
+
+    const Map<Type, JsonFactory> factories = {
+      StorageBox: StorageBox.fromJson,
+      AppConfig: AppConfig.fromJson,
+    };
+    ```
+
+    #### Initialization Contract
+
+    ```dart
+    @KConvertInit
+    void registerConverters() async =>
+        await KConverter.instance.register(factories);
+    ```
+
+    #### Runtime Decoding API
+
+    ```dart
+    class JsonTypeParser {
+      static KResult<T> decodeMap<T>(Map<String, dynamic> values) {
+        // generic lookup logic
+      }
+
+      static KResult<List<T>> decodeList<T>(Iterable values) {
+        // generic list lookup logic
+      }
+    }
+    ```
+
+    ### 2.3 Failure Model
+
+    The runtime decoding API follows a **result-based error model** rather than throwing unchecked exceptions. All decode operations return a `KResult<T>` wrapper.
+
+    **Failure Categories:**
+    *   `RegistryNotInitialized`: Init hook was never called.
+    *   `TypeNotRegistered`: Requested `T` is not in the map.
+    *   `InvalidStructure`: JSON shape doesn't match expectations.
+    *   `FactoryFailure`: The `fromJson` method itself threw an error.
+
+  </TabsContent>
+
+  <TabsContent value="common">
+    # Common Converters
+
+    ## 1. Requirements Document
+
+    ### 1.1 Overview
+
+    This module provides a set of **common, reusable data converters** that normalize frequently used data representations into strongly typed values.
+
+    The converters are designed to:
+
+    *   Handle inconsistent external data formats
+    *   Support nullable and non-nullable use cases
+    *   Work seamlessly with the central conversion registry
+    *   Provide predictable, type-safe results
+
+    The focus is on **color values**, **date & time values**, and **primitive data types**, which are commonly received in multiple formats from APIs, configuration files, and user-generated content.
+
+    ### 1.2 User Stories
+
+    *   **US-1**: As a developer, I want to parse colors from multiple string and numeric formats without writing custom logic.
+    *   **US-2**: As a backend consumer, I want date and time values to be normalized regardless of timezone or representation.
+    *   **US-3**: As a framework user, I want safe conversion of loosely typed values into primitives.
+    *   **US-4**: As an application maintainer, I want consistent conversion behavior across the entire codebase.
+
+    ### 1.3 Functional Requirements
+
+    #### Color Conversion
+    1.  **Multi-format Support**: `RGB`, `RGBA`, `Hex Strings` w/o alpha, `Integer`.
+    2.  **Null-Safety**: Distinct `ColorConverter` (nullable) and `NonNullableColorConverter`.
+    3.  **Result Integration**: Invalid formats must return structured failures.
+
+    #### Date & Time Conversion
+    1.  **Format Agnostic**: Support ISO-8601, numeric timestamps.
+    2.  **Scenarios**: `DateTime`, `DateOnly`, and `TimeOnly` semantics.
+    3.  **Timezones**: Explicit deterministic rules (e.g. UTC by default).
+
+    #### Primitive Data Type Conversion
+    1.  **Target Types**: String, Integer, Double, Boolean.
+    2.  **Source Compatibility**: Accept dynamic input (strings to numbers, etc.).
+    3.  **Safety**: No runtime exceptions on coercion failure.
+
+    ### 1.4 Non-Functional Requirements
+
+    *   No runtime reflection
+    *   Predictable and deterministic conversion rules
+    *   Minimal runtime overhead
+    *   Use of pure functions
+
+    ---
+
+    ## 2. Technical Document
+
+    ### 2.1 Architecture
+
+    Common converters act as **utility-level building blocks** used by higher-level decoding and registry systems.
+    They do not perform type resolution themselves but are invoked by decoding pipelines.
+
+    ### 2.2 API Design
+
+    #### Color Converters
+
+    Supported: `r,g,b`, `(r,g,b)`, `#rrggbbaa`, `0xaarrggbb`.
+
+    ```dart
+    class ColorConverter extends JsonConverter<Color?, String?> {
+      const ColorConverter();
+
+      @override
+      Color? fromJson(String? json) {
+        if (json == null) return null;
+        return convertToColor(json);
+      }
+
+      @override
+      String? toJson(Color? object) =>
+          object == null ? null : convertColorToString(object);
+    }
+    ```
+
+    #### Date & Time Converters
+
+    ```dart
+    class DateTimeConverter extends JsonConverter<DateTime?, String?> {
+      const DateTimeConverter();
+
+      @override
+      DateTime? fromJson(String? json) =>
+          json == null ? null : parseDateTime(json);
+
+      @override
+      String? toJson(DateTime? object) =>
+          object == null ? null : formatDateTime(object);
+    }
+    ```
+
+    #### Primitive Type Converters
+
+    ```dart
+    class IntConverter extends JsonConverter<int?, Object?> {
+      const IntConverter();
+
+      @override
+      int? fromJson(Object? json) =>
+          json == null ? null : convertToInt(json);
+
+      @override
+      Object? toJson(int? object) => object;
+    }
+    ```
+
+    ### 2.3 Failure Model Integration
+
+    All common converters return results using the same result-based abstraction.
+    Failure scenarios include:
+    *   `UnsupportedFormat` (e.g. malformed Hex color)
+    *   `InvalidCoercion` (e.g. "abc" to int)
+
+    ### 2.4 Extensibility
+
+    The converter system allows for:
+    *   Custom Locale-aware parsers
+    *   User-defined overrides via the Registry
+
+  </TabsContent>
+</Tabs>
