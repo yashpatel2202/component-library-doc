@@ -1,39 +1,280 @@
 import { ArchitectureGraph } from "@/components/ArchitectureGraph";
 import { DocStatus } from "@/components/DocStatus";
 
-<DocStatus status="in-progress" />
+<DocStatus status="done" />
 
-# Utilities & Extensions
+# Utilities
 
-### Overview
+## 1. Requirement Document
 
-A robust set of extension methods to reduce boilerplate code and commonly used logic.
+### 1.1 Overview
 
-### User Story
+The `kUtil` package is a lightweight Flutter utility library designed to standardize and simplify commonly used operations across applications.
 
-- **As a Developer**, I want a robust set of extension methods to reduce boilerplate code.
+It focuses on:
 
-### Functional Requirements
+- String validation and manipulation
+- DateTime formatting and calculations
+- Time conversions
+- Color handling utilities
 
-- **String Manipulation**: Capitalization, masking, regex helpers.
-- **Collection Utilities**: Safe access `list.getOrNull(i)`, unique filters, chunking.
+The goal is to reduce repetitive boilerplate code and ensure consistency across projects.
 
-### API Design
+---
+
+### 1.2 User Stories
+
+- **String Utilities**: As a developer, I want to check if a string contains a valid value in a single method and avoid repetitive null/empty checks.
+- **DateTime Utilities**: As a developer, I want to convert `DateTime` into predefined formats, parse strings safely, and access derived dates like week start/end.
+- **Time Utilities**: As a developer, I want to convert between `String` and `TimeOfDay` seamlessly.
+- **Color Utilities**: As a developer, I want to safely handle nullable colors, convert between `String` and `Color`, and perform operations like opacity adjustment and blending.
+
+---
+
+### 1.3 Functional Requirements
+
+#### 1.3.1 String Utilities
+
+- `hasValue → bool`
+
+**Example:**
 
 ```dart
-extension StringExtensions on String {
-  String get capitalize =>
-    "${this[0].toUpperCase()}${this.substring(1)}";
+value.hasValue;
+```
 
-  String mask({int visibleCount = 4}) {
-    // ...
-  }
+#### 1.3.2 DateTime Formatting
+
+Supported formats:
+
+| Format Key       | Example Output      |
+| :--------------- | :------------------ |
+| `mmmDhhmmaa`     | Apr 5 10:30 AM      |
+| `mmmDyyyy`       | Apr 5 2026          |
+| `dmmmm`          | 5 April             |
+| `hhmmaMmmDdYyyy` | 10:30 AM Apr 5 2026 |
+| `mmmDdYyyyHhmma` | Apr 5 2026 10:30 AM |
+| `mmDDyyyy`       | 04/05/2026          |
+| `yyyymmdd`       | 2026-04-05          |
+| `mmmmDdYyy`      | April 5 2026        |
+| `hmma`           | 10:30 AM            |
+| `ddMMMYYYY`      | 05 Apr 2026         |
+| `mmmdyyyy`       | Apr 5, 2026         |
+
+**Example:**
+
+```dart
+date.mmmDyyyy;
+```
+
+#### 1.3.3 String to Date/Time
+
+- String → DateTime
+- String → TimeOfDay
+- TimeOfDay → hhmma
+
+**Example:**
+
+```dart
+"2026-04-05".toDateTime;
+"10:30 AM".toTimeOfDay;
+time.toHHMMA;
+```
+
+#### 1.3.4 DateTime Getters
+
+| Getter / Method                      | Description                                                            |
+| :----------------------------------- | :--------------------------------------------------------------------- |
+| `ymd`                                | Returns the Year-Month-Day as a formatted string.                      |
+| `weekStartDate`, `weekEndDate`       | Returns the start and end `DateTime` of the current week.              |
+| `nextDate`, `previousDate`           | Quick access to tomorrow's and yesterday's dates.                      |
+| `monthFirstDate`                     | Returns the `DateTime` for the first day of the current month.         |
+| `nextMonthDate`, `previousMonthDate` | Returns the same day in the next or previous month.                    |
+| `yearAfterDate`, `yearBeforeDate`    | Returns the same day in the next or previous year.                     |
+| `weekDayList`                        | Returns a list of all `DateTime` objects for the current week.         |
+| `agoTime`                            | Returns a human-readable relative time string (e.g., "2 hours ago").   |
+| `eventCalendarStr`                   | Returns a specialized string format for calendar event displays.       |
+| `eventTileStr`, `eventDualTileStr`   | Returns formatted strings optimized for event tiles and UI components. |
+| `isSameDay(DateTime)`                | Checks if two dates fall on the same calendar day.                     |
+| `isInSameMonth(DateTime)`            | Determines if the date belongs to the same month as another.           |
+| `isInSameWeek(DateTime)`             | Determines if the date belongs to the same week as another.            |
+| `isBeforeSameDay(DateTime)`          | Checks if a date is chronologically before another day.                |
+| `isAfterSameDay(DateTime)`           | Checks if a date is chronologically after another day.                 |
+| `isSameYMD(DateTime)`                | Performs a precise equality check on Year, Month, and Day.             |
+
+**Example:**
+
+```dart
+date.weekStartDate;
+date.isSameDay(otherDate);
+date.agoTime;
+```
+
+#### 1.3.5 Color Utilities
+
+- `nonNull(Color?, fallback)`
+- `setOpacity(double)`
+- `operator +` (blend colors)
+- String → Color
+- Color → String
+
+**Example:**
+
+```dart
+color.nonNull(Colors.black);
+color.setOpacity(0.5);
+"#FF5733".toColor;
+color.toHex;
+```
+
+---
+
+### 1.4 Non-Functional Requirements
+
+- **Performance**: Minimal execution overhead, avoid unnecessary object creation.
+- **Reusability**: Designed using extension methods for seamless integration.
+- **Maintainability**: Clear naming conventions and centralized format definitions.
+- **Scalability**: Easily extendable for new utilities.
+- **Testability**: Full unit test coverage required.
+
+---
+
+### 1.5 Assumptions & Constraints
+
+- Flutter/Dart environment only.
+- Minimal external dependencies (prefer pure Dart or `intl`).
+- Consistent formatting standards across the app.
+
+---
+
+## 2. Technical Document
+
+### 2.1 Architecture
+
+<ArchitectureGraph
+  diagram={`graph TD
+    %% Styles
+    classDef core fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,rx:10,ry:10;
+    classDef util fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px,color:#334155,rx:8,ry:8;
+    classDef ui fill:#f0fdf4,stroke:#86efac,stroke-width:2px,color:#166534,rx:8,ry:8;
+
+    App[Flutter App]:::ui --> KUtil[kUtil Package]:::core
+
+    subgraph Utils [Utilities]
+        direction LR
+        SE[String]:::util
+        DE[DateTime]:::util
+        TU[Time]:::util
+        CE[Color]:::util
+    end
+
+    KUtil --> SE
+    KUtil --> DE
+    KUtil --> TU
+    KUtil --> CE
+
+    SE & DE & TU & CE --> Dart[Dart Core / intl]:::core`}
+
+description={
+
+<p>
+The <strong>kUtil</strong> package follows a modular extension-based architecture.
+It layer-binds utility logic directly onto existing Dart and Flutter types, ensuring minimal overhead and maximum discoverability.
+</p>
+}
+/>
+
+### 2.2 API Design
+
+#### String API
+
+```dart
+extension KStringExt on String? {
+  bool get hasValue;
+}
+```
+
+#### DateTime API
+
+```dart
+extension KDateTimeExt on DateTime {
+  String get mmmDhhmmaa;
+  String get mmmDyyyy;
+  String get dmmmm;
+  // ... other format getters
+
+  DateTime get weekStartDate;
+  DateTime get weekEndDate;
+  DateTime get nextDate;
+  DateTime get previousDate;
+
+  bool isSameDay(DateTime other);
+}
+```
+
+#### Parsing API
+
+```dart
+extension KStringDateExt on String {
+  DateTime get toDateTime;
+  TimeOfDay get toTimeOfDay;
+}
+```
+
+#### Time API
+
+```dart
+extension KTimeExt on TimeOfDay {
+  String get toHHMMA;
+}
+```
+
+#### Color API
+
+```dart
+extension KColorExt on Color? {
+  Color nonNull(Color fallback);
 }
 
-extension ListExtensions<T> on List<T> {
-  T? getOrNull(int index) {
-    if (index >= 0 && index < length) return this[index];
-    return null;
-  }
+extension KColorOps on Color {
+  Color setOpacity(double opacity);
+  Color operator +(Color other);
+  String get toHex;
 }
+
+extension KStringColor on String {
+  Color get toColor;
+}
+```
+
+---
+
+### 2.3 Additional Considerations
+
+- **Error Handling**: Invalid inputs should either throw controlled exceptions or return nullable values (`DateTime?`) based on design choice.
+- **Testing Strategy**: Unit tests must cover all date formats, edge cases (leap year, month boundaries), and invalid inputs.
+
+---
+
+### 2.4 Example End-to-End Usage
+
+```dart
+final now = DateTime.now();
+
+// Formatting
+print(now.mmmDyyyy);
+
+// Date calculations
+print(now.weekStartDate);
+print(now.nextMonthDate);
+
+// String parsing
+final date = "2026-04-05".toDateTime;
+
+// Time
+final time = "10:30 AM".toTimeOfDay;
+print(time.toHHMMA);
+
+// Color
+final color = "#FF5733".toColor.setOpacity(0.8);
 ```
